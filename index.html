@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>你最像《再见爱人》里的谁</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{ --accent:#c2698f; --accent-soft:#f6e9f0; --bg:#faf5f3; --bg2:#f5ebf1; --card:#fff; --ink:#2a2228; --sub:#8a7a85; --line:#f0e6ec; }
+html,body{min-height:100vh;}
+body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle at 30% 12%, var(--bg2), var(--bg)); color:var(--ink); display:flex; justify-content:center; align-items:flex-start; padding:32px 16px; transition:background .5s,color .5s; }
+.wrap{width:100%;max-width:580px;margin:0 auto;}
+.card{background:var(--card);border-radius:26px;box-shadow:0 10px 50px rgba(120,80,100,0.13);overflow:hidden;animation:rise .6s ease both;}
+.theme-hidden .card{box-shadow:0 10px 60px rgba(0,0,0,0.55);}
+@keyframes rise{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:none;}}
+.home{padding:64px 36px;text-align:center;}
+.home .kicker{font-size:13px;letter-spacing:3px;color:var(--accent);margin-bottom:20px;font-weight:500;}
+.home h1{font-family:'Noto Serif SC',serif;font-size:33px;font-weight:900;line-height:1.4;margin-bottom:18px;}
+.home p{font-size:15px;color:var(--sub);line-height:1.8;margin-bottom:40px;}
+.startbtn{background:var(--accent);color:#fff;border:none;padding:16px 48px;font-size:17px;font-weight:500;border-radius:40px;cursor:pointer;font-family:'Noto Sans SC';box-shadow:0 8px 24px rgba(180,100,140,0.3);transition:transform .15s;}
+.startbtn:hover{transform:translateY(-2px);}
+.quiz{padding:44px 36px 48px;}
+.progress-bar{height:6px;background:var(--accent-soft);border-radius:6px;overflow:hidden;margin-bottom:8px;}
+.progress-fill{height:100%;background:var(--accent);width:0;transition:width .4s;}
+.progress-text{font-size:13px;color:var(--sub);margin-bottom:28px;text-align:right;}
+.qtitle{font-family:'Noto Serif SC',serif;font-size:23px;font-weight:600;line-height:1.5;margin-bottom:28px;}
+.opts{display:flex;flex-direction:column;gap:13px;}
+.opt{text-align:left;background:var(--card);border:1.5px solid var(--line);color:var(--ink);padding:17px 20px;font-size:15.5px;line-height:1.5;border-radius:15px;cursor:pointer;font-family:'Noto Sans SC';transition:all .15s;}
+.opt:hover{border-color:var(--accent);background:var(--accent-soft);transform:translateX(3px);}
+.r-top{padding:44px 36px 30px;text-align:center;border-bottom:1px solid var(--line);}
+.r-tag{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:12px;letter-spacing:1.5px;padding:6px 16px;border-radius:20px;margin-bottom:20px;font-weight:500;}
+.r-emoji{font-size:50px;line-height:1;margin-bottom:16px;}
+.r-lead{font-size:14px;color:var(--sub);margin-bottom:8px;letter-spacing:1px;}
+.r-name{font-family:'Noto Serif SC',serif;font-size:36px;font-weight:900;margin-bottom:14px;}
+.r-sub{font-size:15px;color:var(--accent);font-weight:500;line-height:1.6;padding:0 10px;}
+.r-body{padding:32px 36px;font-size:15.5px;line-height:1.9;}
+.r-body p{margin:0 0 15px;}
+.r-radar{padding:6px 28px 36px;}
+.r-radar-title{text-align:center;font-family:'Noto Serif SC',serif;font-size:18px;font-weight:600;margin-bottom:4px;}
+.r-btns{padding:0 36px 40px;display:flex;flex-direction:column;gap:12px;}
+.r-btn{padding:16px;border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;font-family:'Noto Sans SC';transition:transform .15s;}
+.r-btn-primary{background:var(--accent);color:#fff;}
+.r-btn-primary:hover{transform:translateY(-2px);}
+.r-btn-ghost{background:transparent;color:var(--sub);border:1.5px solid var(--line);}
+.hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="homeCard">
+    <div class="home">
+      <div class="kicker">再见爱人 · 关系人格测试</div>
+      <h1>在亲密关系里<br>你最像哪一个 TA？</h1>
+      <p>18 种关系人格，6 个维度<br>用 18 道题，照见你看待爱的方式</p>
+      <button class="startbtn" id="startBtn">开始测试</button>
+    </div>
+  </div>
+  <div class="card hidden" id="quizCard">
+    <div class="quiz">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText"></div>
+      <div class="qtitle" id="questionText"></div>
+      <div class="opts" id="optionList"></div>
+    </div>
+  </div>
+  <div class="card hidden" id="resultCard">
+    <div class="r-top">
+      <div class="r-tag" id="rTag"></div>
+      <div class="r-emoji" id="rEmoji"></div>
+      <div class="r-lead">在亲密关系里，你是</div>
+      <div class="r-name" id="rName"></div>
+      <div class="r-sub" id="rSub"></div>
+    </div>
+    <div class="r-body" id="rBody"></div>
+    <div class="r-radar">
+      <div class="r-radar-title">你的关系人格雷达图</div>
+      <div id="rRadar"></div>
+    </div>
+    <div class="r-btns">
+      <button class="r-btn r-btn-primary" id="shareBtn">分享给朋友</button>
+      <button class="r-btn r-btn-ghost" id="restartBtn">重新测试</button>
+    </div>
+  </div>
+</div>
+
+<!-- 数据文件：改文案/题目/坐标/配色都在 data.js -->
+<script src="data.js"></script>
+<script>
+  const homeCard=document.getElementById("homeCard"),quizCard=document.getElementById("quizCard"),resultCard=document.getElementById("resultCard");
+  const startBtn=document.getElementById("startBtn"),progressFill=document.getElementById("progressFill"),progressText=document.getElementById("progressText");
+  const questionText=document.getElementById("questionText"),optionList=document.getElementById("optionList");
+  const restartBtn=document.getElementById("restartBtn"),shareBtn=document.getElementById("shareBtn");
+  let currentQuestionIndex=0, dimRaw=[0,0,0,0,0,0];
+
+  function applyTheme(cat){
+    const t=themeColors[cat]; const r=document.documentElement.style;
+    r.setProperty("--accent",t.accent); r.setProperty("--accent-soft",t.accentSoft);
+    r.setProperty("--bg",t.bg); r.setProperty("--bg2",t.bg2); r.setProperty("--card",t.card);
+    r.setProperty("--ink",t.ink); r.setProperty("--sub",t.sub); r.setProperty("--line",t.line);
+    document.body.classList.remove("theme-hidden"); if(cat==="hidden")document.body.classList.add("theme-hidden");
+  }
+  function resetState(){dimRaw=[0,0,0,0,0,0];currentQuestionIndex=0;applyTheme("growth");}
+
+  function renderQuestion(i){
+    const q=questions[i];
+    progressFill.style.width=Math.round(i/questions.length*100)+"%";
+    progressText.textContent="第 "+(i+1)+" / "+questions.length+" 题";
+    questionText.textContent=q.title; optionList.innerHTML="";
+    q.options.forEach(function(opt){
+      const b=document.createElement("button"); b.className="opt"; b.textContent=opt.text;
+      b.addEventListener("click",function(){
+        for(let k=0;k<6;k++)dimRaw[k]+=opt.d[k];
+        if(currentQuestionIndex<questions.length-1){currentQuestionIndex++;renderQuestion(currentQuestionIndex);}
+        else showResult();
+      });
+      optionList.appendChild(b);
+    });
+  }
+  function getUserVector(){return dimRaw.map(function(r){let v=3+r/9;return v<1?1:v>5?5:v;});}
+  function matchCharacter(u){let best=null,bd=Infinity;for(const n in characterVectors){const v=characterVectors[n];let s=0;for(let i=0;i<6;i++)s+=(u[i]-v[i])*(u[i]-v[i]);if(Math.sqrt(s)<bd){bd=Math.sqrt(s);best=n;}}return best;}
+  function getEmoji(name){const m=characterProfiles[name].subtitle.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F0FF}📐🔍🎵🪞🔪🎯🌌🎐🔥🎤🌊🌫🦢🎈🥚🪦🎉🚩]/u);return m?m[0]:"✨";}
+  function hexA(hex,a){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');return 'rgba('+parseInt(hex.substr(0,2),16)+','+parseInt(hex.substr(2,2),16)+','+parseInt(hex.substr(4,2),16)+','+a+')';}
+  function buildRadar(user){
+    const cx=160,cy=160,R=110,n=6,dL=["理性","抽离","表达","自我","清醒","锋利"],dR=["感性","投入","回避","付出","沉溺","温柔"];
+    const cs=getComputedStyle(document.body),accent=cs.getPropertyValue("--accent").trim()||"#c2698f",sub=cs.getPropertyValue("--sub").trim();
+    const grid=document.body.classList.contains("theme-hidden")?"rgba(255,255,255,0.12)":"#e8dfe6";
+    function pt(i,r){const a=-Math.PI/2+i*2*Math.PI/n;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+    let s='<svg viewBox="0 0 320 320" width="100%" style="max-width:330px;display:block;margin:0 auto;">';
+    for(let g=1;g<=5;g++){let p=[];for(let i=0;i<n;i++){const q=pt(i,R*g/5);p.push(q[0].toFixed(1)+","+q[1].toFixed(1));}s+='<polygon points="'+p.join(" ")+'" fill="none" stroke="'+grid+'" stroke-width="1"/>';}
+    for(let i=0;i<n;i++){const q=pt(i,R);s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+q[0].toFixed(1)+'" y2="'+q[1].toFixed(1)+'" stroke="'+grid+'" stroke-width="1"/>';}
+    let dp=[];for(let i=0;i<n;i++){const q=pt(i,R*user[i]/5);dp.push(q[0].toFixed(1)+","+q[1].toFixed(1));}
+    s+='<polygon points="'+dp.join(" ")+'" fill="'+hexA(accent,0.22)+'" stroke="'+accent+'" stroke-width="2"/>';
+    for(let i=0;i<n;i++){const q=pt(i,R*user[i]/5);s+='<circle cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="3.5" fill="'+accent+'"/>';}
+    for(let i=0;i<n;i++){const q=pt(i,R+22);s+='<text x="'+q[0].toFixed(1)+'" y="'+q[1].toFixed(1)+'" font-size="11" text-anchor="middle" fill="'+sub+'">'+dL[i]+'·'+dR[i]+'</text>';}
+    return s+'</svg>';
+  }
+  function showResult(){
+    progressFill.style.width="100%";
+    const user=getUserVector(),top=matchCharacter(user),profile=characterProfiles[top],cat=characterCategory[top];
+    applyTheme(cat);
+    quizCard.classList.add("hidden");homeCard.classList.add("hidden");resultCard.classList.remove("hidden");
+    document.getElementById("rTag").textContent=themeColors[cat].tag;
+    document.getElementById("rEmoji").textContent=getEmoji(top);
+    document.getElementById("rName").textContent=top+"型";
+    let sub=profile.subtitle.replace(/^.*?型[」』]?\s*/,"").replace(/^[^\u4e00-\u9fa5A-Za-z]*/,"").trim();
+    document.getElementById("rSub").textContent=sub||profile.subtitle;
+    document.getElementById("rBody").innerHTML=profile.paragraphs.map(function(p){return "<p>"+p+"</p>";}).join("");
+    document.getElementById("rRadar").innerHTML=buildRadar(user);
+    window.scrollTo(0,0);
+  }
+  startBtn.addEventListener("click",function(){resetState();homeCard.classList.add("hidden");resultCard.classList.add("hidden");quizCard.classList.remove("hidden");renderQuestion(0);window.scrollTo(0,0);});
+  restartBtn.addEventListener("click",function(){applyTheme("growth");resultCard.classList.add("hidden");quizCard.classList.add("hidden");homeCard.classList.remove("hidden");resetState();window.scrollTo(0,0);});
+  shareBtn.addEventListener("click",function(){alert("截图保存这一页，分享到小红书 / 朋友圈吧～");});
+</script>
+</body>
+</html>
