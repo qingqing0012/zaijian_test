@@ -44,6 +44,32 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 .r-btn-primary:hover{transform:translateY(-2px);}
 .r-btn-ghost{background:transparent;color:var(--sub);border:1.5px solid var(--line);}
 .hidden{display:none;}
+/* 聊天卡片 */
+.chat-header{display:flex;align-items:center;gap:14px;padding:22px 28px;border-bottom:1px solid var(--line);}
+.chat-back{background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;font-family:'Noto Sans SC';padding:0;transition:color .15s;}
+.chat-back:hover{color:var(--accent);}
+.chat-mentor-name{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;}
+.chat-mentor-sub{font-size:13px;color:var(--sub);margin-top:2px;}
+.chat-msgs{display:flex;flex-direction:column;gap:14px;padding:24px 28px;max-height:55vh;overflow-y:auto;min-height:220px;}
+.chat-msgs::-webkit-scrollbar{width:4px;}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+.chat-empty{text-align:center;color:var(--sub);font-size:14px;padding:40px 20px;line-height:1.9;}
+.chat-msg{max-width:80%;padding:14px 18px;font-size:15px;line-height:1.7;border-radius:18px;word-break:break-word;animation:rise .3s ease both;}
+.chat-msg-bot{align-self:flex-start;background:var(--card);border:1.5px solid var(--line);border-bottom-left-radius:6px;}
+.chat-msg-user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px;}
+.chat-typing{align-self:flex-start;display:flex;gap:5px;padding:14px 18px;}
+.chat-typing span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:dotBounce 1.4s infinite ease-in-out both;}
+.chat-typing span:nth-child(1){animation-delay:0s;}
+.chat-typing span:nth-child(2){animation-delay:.2s;}
+.chat-typing span:nth-child(3){animation-delay:.4s;}
+@keyframes dotBounce{0%,80%,100%{transform:scale(0.6);opacity:.4;}40%{transform:scale(1);opacity:1;}}
+.chat-input-area{display:flex;gap:10px;padding:16px 28px 24px;border-top:1px solid var(--line);}
+.chat-input{flex:1;padding:14px 18px;border:1.5px solid var(--line);border-radius:24px;font-size:15px;font-family:'Noto Sans SC';color:var(--ink);background:var(--card);outline:none;transition:border-color .15s;}
+.chat-input:focus{border-color:var(--accent);}
+.chat-input::placeholder{color:var(--sub);}
+.chat-send{background:var(--accent);color:#fff;border:none;padding:12px 24px;font-size:15px;font-weight:500;border-radius:24px;cursor:pointer;font-family:'Noto Sans SC';transition:transform .15s;white-space:nowrap;}
+.chat-send:hover{transform:translateY(-1px);}
+.chat-send:disabled{opacity:.5;cursor:not-allowed;transform:none;}
 </style>
 </head>
 <body>
@@ -78,8 +104,26 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
       <div id="rRadar"></div>
     </div>
     <div class="r-btns">
-      <button class="r-btn r-btn-primary" id="shareBtn">分享给朋友</button>
+      <button class="r-btn r-btn-primary" id="chatEntryBtn">和导师聊聊</button>
+      <button class="r-btn r-btn-ghost" id="shareBtn">分享给朋友</button>
       <button class="r-btn r-btn-ghost" id="restartBtn">重新测试</button>
+    </div>
+  </div>
+  <!-- 聊天卡片 -->
+  <div class="card hidden" id="chatCard">
+    <div class="chat-header">
+      <button class="chat-back" id="chatBackBtn">&larr; 返回</button>
+      <div>
+        <div class="chat-mentor-name">李松蔚导师</div>
+        <div class="chat-mentor-sub">关系咨询师</div>
+      </div>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chatInput" placeholder="💬 输入你的想法..." maxlength="2000">
+      <button class="chat-send" id="chatSendBtn">发送</button>
     </div>
   </div>
 </div>
@@ -152,6 +196,138 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   startBtn.addEventListener("click",function(){resetState();homeCard.classList.add("hidden");resultCard.classList.add("hidden");quizCard.classList.remove("hidden");renderQuestion(0);window.scrollTo(0,0);});
   restartBtn.addEventListener("click",function(){applyTheme("growth");resultCard.classList.add("hidden");quizCard.classList.add("hidden");homeCard.classList.remove("hidden");resetState();window.scrollTo(0,0);});
   shareBtn.addEventListener("click",function(){alert("截图保存这一页，分享到小红书 / 朋友圈吧～");});
+
+  // ===== 聊天功能 =====
+  const chatCard=document.getElementById("chatCard"),chatMsgs=document.getElementById("chatMsgs");
+  const chatInput=document.getElementById("chatInput"),chatSendBtn=document.getElementById("chatSendBtn");
+  const chatBackBtn=document.getElementById("chatBackBtn"),chatEntryBtn=document.getElementById("chatEntryBtn");
+  let conversationId=null;
+  let sessionId=null;
+
+  // 结果页 → 聊天页
+  chatEntryBtn.addEventListener("click",function(){
+    resultCard.classList.add("hidden");
+    chatCard.classList.remove("hidden");
+    window.scrollTo(0,0);
+    initChat();
+  });
+
+  // 聊天页 → 返回结果页
+  chatBackBtn.addEventListener("click",function(){
+    chatCard.classList.add("hidden");
+    resultCard.classList.remove("hidden");
+    window.scrollTo(0,0);
+  });
+
+  async function initChat(){
+    // 重置 UI + 生成新会话标识
+    conversationId=null;
+    sessionId=crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+    chatMsgs.innerHTML='';
+    chatInput.value="";
+    chatSendBtn.disabled=true;
+    showChatTyping();
+
+    try{
+      // 握手消息：消耗掉 bot 的系统开场白，建立会话（不存库）
+      const res=await fetch("/api/chat",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({message:"你好",is_init:true,session_id:sessionId})
+      });
+      const data=await res.json();
+      hideChatTyping();
+
+      if(data.reply){
+        // bot 的问候作为欢迎语展示
+        addChatMsg("bot",data.reply);
+        conversationId=data.conversation_id;
+      }else{
+        chatMsgs.innerHTML='<div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>';
+      }
+    }catch(err){
+      hideChatTyping();
+      chatMsgs.innerHTML='<div class="chat-empty">连接失败<br>请检查网络后刷新重试</div>';
+    }
+
+    chatSendBtn.disabled=false;
+    chatInput.focus();
+  }
+
+  function addChatMsg(role,text){
+    // 去掉首次进入的空状态提示
+    const empty=chatMsgs.querySelector(".chat-empty");
+    if(empty)empty.remove();
+
+    const div=document.createElement("div");
+    div.className="chat-msg chat-msg-"+(role==="user"?"user":"bot");
+    div.textContent=text;
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+    return div;
+  }
+
+  function showChatTyping(){
+    const typing=document.createElement("div");
+    typing.className="chat-typing";
+    typing.id="chatTyping";
+    typing.innerHTML="<span></span><span></span><span></span>";
+    chatMsgs.appendChild(typing);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+  }
+
+  function hideChatTyping(){
+    const el=document.getElementById("chatTyping");
+    if(el)el.remove();
+  }
+
+  async function sendChatMessage(){
+    const text=chatInput.value.trim();
+    if(!text || chatSendBtn.disabled)return;
+
+    // UI 反馈
+    addChatMsg("user",text);
+    chatInput.value="";
+    chatSendBtn.disabled=true;
+    showChatTyping();
+
+    try{
+      const body={message:text,session_id:sessionId};
+      if(conversationId)body.conversation_id=conversationId;
+
+      const res=await fetch("/api/chat",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(body)
+      });
+
+      const data=await res.json();
+      hideChatTyping();
+
+      if(data.reply){
+        addChatMsg("bot",data.reply);
+        if(data.conversation_id)conversationId=data.conversation_id;
+      }else if(data.error){
+        addChatMsg("bot","抱歉，出了点问题："+data.error);
+      }else{
+        addChatMsg("bot","（机器人没有返回回复，请稍后重试）");
+      }
+    }catch(err){
+      hideChatTyping();
+      addChatMsg("bot","网络错误，请检查网络后重试");
+    }
+
+    chatSendBtn.disabled=false;
+    chatInput.focus();
+  }
+
+  chatSendBtn.addEventListener("click",sendChatMessage);
+  chatInput.addEventListener("keydown",function(e){
+    if(e.key==="Enter"&&!e.shiftKey){
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
 </script>
 </body>
 </html>

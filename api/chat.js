@@ -1,14 +1,38 @@
 /**
  * /api/chat — Vercel Serverless Function
- * 接收前端用户消息 → 用环境变量中的 Token 调用扣子 Bot（SSE 流式）→ 返回完整回复
- * Token 仅存在于后端环境变量，绝不出现在前端代码中
+ * 接收前端用户消息 → 存 Supabase → 调扣子 Bot（SSE 流式）→ 存回复 → 返回
+ * Token / 密钥仅存在于后端环境变量，绝不出现在前端代码中
  */
 
 const COZE_API_BASE = 'https://api.coze.cn';
-
-// Vercel Hobby 计划函数超时约 10s，留 2s 余量
 const WAIT_TIMEOUT_MS = 8000;
 
+// ---- Supabase 写入（REST API，零依赖） ----
+async function supabaseInsert(row) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn('[supabase] 未配置 SUPABASE_URL / SUPABASE_SECRET_KEY，跳过写入');
+    return;
+  }
+
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/chat_messages`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+  } catch (err) {
+    console.error('[supabase] 写入失败（聊天不受影响）', err);
+  }
+}
+
+// ---- 主处理函数 ----
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -29,7 +53,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '请求体格式错误，需要 JSON' });
   }
 
-  const { message } = body;
+  const {
+    message,
+    conversation_id,
+    session_id,
+    is_init,
+  } = body;
+
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return res.status(400).json({ error: '缺少 message 字段' });
   }
@@ -42,6 +72,13 @@ export default async function handler(req, res) {
       error: '后端配置缺失：请设置 COZE_API_TOKEN 和 COZE_BOT_ID',
     });
   }
+
+  // 当前阶段硬编码，2.4 扩展为多导师
+  const mentorName = '李松蔚';
+  const mentorBotId = botId;
+  // 暂存用户消息，等拿到 bot 回复后一起入库（保证 Vercel 冻结前完成写入）
+  const userMessage = message.trim();
+  const shouldStore = !is_init && session_id;
 
   try {
     // 调用扣子 v3/chat（SSE 流式）
@@ -56,6 +93,7 @@ export default async function handler(req, res) {
         user_id: 'zaijian-user',
         stream: true,
         auto_save_history: true,
+        ...(conversation_id ? { conversation_id } : {}),
         additional_messages: [
           {
             role: 'user',
@@ -65,7 +103,6 @@ export default async function handler(req, res) {
           },
         ],
       }),
-      // 避免 HTTP/2 流超时卡住函数
       signal: AbortSignal.timeout(WAIT_TIMEOUT_MS),
     });
 
@@ -86,7 +123,6 @@ export default async function handler(req, res) {
     let currentEvent = '';
 
     for (const line of lines) {
-      // 记录事件类型
       if (line.startsWith('event:')) {
         currentEvent = line.slice(6).trim();
         continue;
@@ -101,7 +137,6 @@ export default async function handler(req, res) {
           conversationId = data.conversation_id;
         }
 
-        // 只从 delta 事件中收集 answer 内容（避免 message.completed 的重复全文）
         if (
           currentEvent === 'conversation.message.delta' &&
           data.role === 'assistant' &&
@@ -115,9 +150,37 @@ export default async function handler(req, res) {
       }
     }
 
+    const finalReply = reply || '（机器人没有返回回复，请稍后重试）';
+    const finalConvId = conversationId || null;
+
+    // 不是系统握手消息 → 批量写入（await 确保在函数返回前完成）
+    if (shouldStore) {
+      const rows = [
+        {
+          session_id,
+          conversation_id: conversation_id || null,
+          role: 'user',
+          content: userMessage,
+          mentor_name: mentorName,
+          mentor_bot_id: mentorBotId,
+        },
+      ];
+      if (reply) {
+        rows.push({
+          session_id,
+          conversation_id: finalConvId,
+          role: 'assistant',
+          content: finalReply,
+          mentor_name: mentorName,
+          mentor_bot_id: mentorBotId,
+        });
+      }
+      for (const row of rows) await supabaseInsert(row);
+    }
+
     return res.status(200).json({
-      reply: reply || '（机器人没有返回回复，请稍后重试）',
-      conversation_id: conversationId || null,
+      reply: finalReply,
+      conversation_id: finalConvId,
     });
   } catch (err) {
     if (err.name === 'AbortError' || err.name === 'TimeoutError') {
