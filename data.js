@@ -419,3 +419,12 @@ const themeColors = {
   growth: { accent:"#c2698f", accentSoft:"#f6e9f0", bg:"#faf5f3", bg2:"#f5ebf1", card:"#ffffff", ink:"#2a2228", sub:"#8a7a85", line:"#f0e6ec", tag:"成长款" },
   hidden: { accent:"#d4a857", accentSoft:"#2a2118", bg:"#16131a", bg2:"#221a16", card:"#1f1a22", ink:"#f0ebe5", sub:"rgba(240,235,229,0.55)", line:"rgba(255,255,255,0.09)", tag:"稀有隐藏款" }
 };
+
+// ---------- 6. 观察室导师配置 ----------
+const mentors = {
+  "沈奕斐": { botId: "7647043981314179135", subtitle: "结构里找出路的人", emoji: "📐" },
+  "黄执中": { botId: "7647189192426029066", subtitle: "一句话戳破自欺",     emoji: "🔍" },
+  "李松蔚": { botId: "7646981072140009481", subtitle: "让你自己撞见真相",   emoji: "🪞" },
+  "胡彦斌": { botId: "7647049872747069483", subtitle: "动了感情才看得最准", emoji: "🎵" },
+  "易立竞": { botId: "7647040408144773158", subtitle: "不许你说还好",       emoji: "🔪" },
+};

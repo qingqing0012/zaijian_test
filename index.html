@@ -70,6 +70,38 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 .chat-send{background:var(--accent);color:#fff;border:none;padding:12px 24px;font-size:15px;font-weight:500;border-radius:24px;cursor:pointer;font-family:'Noto Sans SC';transition:transform .15s;white-space:nowrap;}
 .chat-send:hover{transform:translateY(-1px);}
 .chat-send:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+/* 聊天页导师切换条 */
+.mentor-bar{display:flex;gap:6px;padding:14px 28px;overflow-x:auto;border-bottom:1px solid var(--line);-webkit-overflow-scrolling:touch;}
+.mentor-bar::-webkit-scrollbar{height:0;}
+.mentor-chip{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--line);border-radius:18px;background:var(--card);cursor:pointer;font-family:'Noto Sans SC';font-size:13.5px;color:var(--ink);transition:all .15s;white-space:nowrap;}
+.mentor-chip:hover{border-color:var(--accent);background:var(--accent-soft);}
+.mentor-chip.mentor-active{border-color:var(--accent);background:var(--accent);color:#fff;}
+.mentor-chip.mentor-active .mentor-chip-sub{color:rgba(255,255,255,0.7);}
+.mentor-chip-emoji{font-size:17px;line-height:1;}
+.mentor-chip-info{display:flex;flex-direction:column;}
+.mentor-chip-name{font-weight:600;font-family:'Noto Serif SC',serif;}
+.mentor-chip-sub{font-size:10.5px;color:var(--sub);margin-top:1px;transition:color .15s;}
+/* 复盘 */
+.review-btn-header{background:none;border:1.5px solid var(--accent);color:var(--accent);padding:6px 14px;border-radius:14px;font-size:13px;cursor:pointer;font-family:'Noto Sans SC';white-space:nowrap;transition:all .15s;}
+.review-btn-header:hover{background:var(--accent);color:#fff;}
+.review-panel{display:none;padding:24px 28px;}
+.review-waiting{text-align:center;padding:40px 20px;}
+.review-waiting-text{font-size:15px;color:var(--sub);margin-bottom:10px;}
+.review-waiting-dots{display:flex;gap:5px;justify-content:center;}
+.review-waiting-dots span{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:dotBounce 1.4s infinite ease-in-out both;}
+.review-waiting-dots span:nth-child(1){animation-delay:0s;}
+.review-waiting-dots span:nth-child(2){animation-delay:.2s;}
+.review-waiting-dots span:nth-child(3){animation-delay:.4s;}
+.review-letter,.review-card{animation:fadeInUp .5s ease both;}
+.review-card{animation-delay:.3s;}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+.review-letter-box,.review-card-box{background:var(--accent-soft);border-radius:14px;padding:20px;font-size:15px;line-height:1.9;margin-bottom:14px;}
+.review-card-box{background:var(--card);border:2px solid var(--accent);border-radius:16px;}
+.review-label{font-size:12px;letter-spacing:1.5px;color:var(--accent);margin-bottom:10px;font-weight:500;}
+.review-card-preview{font-size:14.5px;line-height:1.8;color:var(--ink);}
+.review-back-row{text-align:center;margin-top:6px;}
+.review-back-row button{background:none;border:none;color:var(--sub);font-size:14px;cursor:pointer;font-family:'Noto Sans SC';padding:8px 16px;transition:color .15s;}
+.review-back-row button:hover{color:var(--accent);}
 </style>
 </head>
 <body>
@@ -113,15 +145,24 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   <div class="card hidden" id="chatCard">
     <div class="chat-header">
       <button class="chat-back" id="chatBackBtn">&larr; 返回</button>
-      <div>
-        <div class="chat-mentor-name">李松蔚导师</div>
-        <div class="chat-mentor-sub">关系咨询师</div>
+      <div style="flex:1">
+        <div class="chat-mentor-name" id="chatMentorName">李松蔚导师</div>
+        <div class="chat-mentor-sub" id="chatMentorSub">关系咨询师</div>
+      </div>
+      <button class="review-btn-header" id="reviewStartBtn">复盘这次</button>
+    </div>
+    <div class="mentor-bar" id="mentorBar"></div>
+    <!-- 复盘面板 -->
+    <div class="review-panel" id="reviewPanel">
+      <div class="review-content" id="reviewContent"></div>
+      <div class="review-back-row" id="reviewBackRow" style="display:none">
+        <button id="reviewBackBtn">返回对话</button>
       </div>
     </div>
     <div class="chat-msgs" id="chatMsgs">
       <div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>
     </div>
-    <div class="chat-input-area">
+    <div class="chat-input-area" id="chatInputArea">
       <input type="text" class="chat-input" id="chatInput" placeholder="💬 输入你的想法..." maxlength="2000">
       <button class="chat-send" id="chatSendBtn">发送</button>
     </div>
@@ -201,15 +242,47 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   const chatCard=document.getElementById("chatCard"),chatMsgs=document.getElementById("chatMsgs");
   const chatInput=document.getElementById("chatInput"),chatSendBtn=document.getElementById("chatSendBtn");
   const chatBackBtn=document.getElementById("chatBackBtn"),chatEntryBtn=document.getElementById("chatEntryBtn");
+  const chatMentorName=document.getElementById("chatMentorName"),chatMentorSub=document.getElementById("chatMentorSub");
+  const mentorBar=document.getElementById("mentorBar");
   let conversationId=null;
   let sessionId=null;
+  let currentMentor="李松蔚"; // 默认推荐
 
-  // 结果页 → 聊天页
+  // 渲染聊天页导师切换条（5 个 chip，当前选中高亮）
+  function renderMentorBar(){
+    mentorBar.innerHTML="";
+    for(const name in mentors){
+      const m=mentors[name];
+      const chip=document.createElement("div");
+      chip.className="mentor-chip"+(name===currentMentor?" mentor-active":"");
+      chip.innerHTML='<span class="mentor-chip-emoji">'+m.emoji+'</span><span class="mentor-chip-info"><span class="mentor-chip-name">'+name+'</span><span class="mentor-chip-sub">'+m.subtitle+'</span></span>';
+      chip.addEventListener("click",function(){
+        if(name!==currentMentor)switchMentor(name);
+      });
+      mentorBar.appendChild(chip);
+    }
+  }
+
+  // 切换导师：清屏 + 新 session + 新握手
+  function switchMentor(mentorName){
+    currentMentor=mentorName;
+    const m=mentors[mentorName];
+    chatMentorName.textContent=mentorName+"导师";
+    chatMentorSub.textContent=m?m.subtitle:"";
+    renderMentorBar();
+    initChat();
+  }
+
+  // 结果页 → 聊天页（默认李松蔚）
   chatEntryBtn.addEventListener("click",function(){
+    currentMentor="李松蔚";
+    chatMentorName.textContent="李松蔚导师";
+    chatMentorSub.textContent=mentors["李松蔚"].subtitle;
     resultCard.classList.add("hidden");
     chatCard.classList.remove("hidden");
-    window.scrollTo(0,0);
+    renderMentorBar();
     initChat();
+    window.scrollTo(0,0);
   });
 
   // 聊天页 → 返回结果页
@@ -220,7 +293,6 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   });
 
   async function initChat(){
-    // 重置 UI + 生成新会话标识
     conversationId=null;
     sessionId=crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);
     chatMsgs.innerHTML='';
@@ -229,17 +301,15 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     showChatTyping();
 
     try{
-      // 握手消息：消耗掉 bot 的系统开场白，建立会话（不存库）
       const res=await fetch("/api/chat",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({message:"你好",is_init:true,session_id:sessionId})
+        body:JSON.stringify({message:"你好",is_init:true,session_id:sessionId,mentor:currentMentor})
       });
       const data=await res.json();
       hideChatTyping();
 
       if(data.reply){
-        // bot 的问候作为欢迎语展示
         addChatMsg("bot",data.reply);
         conversationId=data.conversation_id;
       }else{
@@ -255,7 +325,6 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   }
 
   function addChatMsg(role,text){
-    // 去掉首次进入的空状态提示
     const empty=chatMsgs.querySelector(".chat-empty");
     if(empty)empty.remove();
 
@@ -285,14 +354,13 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     const text=chatInput.value.trim();
     if(!text || chatSendBtn.disabled)return;
 
-    // UI 反馈
     addChatMsg("user",text);
     chatInput.value="";
     chatSendBtn.disabled=true;
     showChatTyping();
 
     try{
-      const body={message:text,session_id:sessionId};
+      const body={message:text,session_id:sessionId,mentor:currentMentor};
       if(conversationId)body.conversation_id=conversationId;
 
       const res=await fetch("/api/chat",{
@@ -327,6 +395,169 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
       e.preventDefault();
       sendChatMessage();
     }
+  });
+
+  // ===== 复盘功能 =====
+  const reviewStartBtn=document.getElementById("reviewStartBtn");
+  const reviewPanel=document.getElementById("reviewPanel");
+  const reviewContent=document.getElementById("reviewContent");
+  const reviewBackRow=document.getElementById("reviewBackRow");
+  const reviewBackBtn=document.getElementById("reviewBackBtn");
+  const chatInputArea=document.getElementById("chatInputArea");
+  let reviewPollTimer=null;
+
+  // 收集当前对话为文本
+  function buildChatHistory(){
+    const msgs=chatMsgs.querySelectorAll(".chat-msg");
+    let lines=[];
+    msgs.forEach(function(m){
+      const role=m.classList.contains("chat-msg-user")?"用户":"导师";
+      lines.push(role+": "+m.textContent);
+    });
+    return lines.join("\n");
+  }
+
+  // 显示复盘面板（隐藏聊天区）
+  function showReviewPanel(){
+    chatMsgs.style.display="none";
+    chatInputArea.style.display="none";
+    reviewPanel.style.display="block";
+    reviewContent.innerHTML='';
+    reviewBackRow.style.display="none";
+  }
+
+  // 隐藏复盘面板（恢复聊天区）
+  function hideReviewPanel(){
+    chatMsgs.style.display="";
+    chatInputArea.style.display="";
+    reviewPanel.style.display="none";
+    reviewContent.innerHTML='';
+  }
+
+  // 显示等待状态
+  function showReviewWaiting(){
+    reviewContent.innerHTML='<div class="review-waiting"><div class="review-waiting-text">正在生成复盘…<br><span style="font-size:13px;color:var(--sub)">这需要约 90 秒，请耐心等待</span></div><div class="review-waiting-dots"><span></span><span></span><span></span></div></div>';
+  }
+
+  // 显示复盘结果（先信后卡）
+  function showReviewResult(letter,card){
+    reviewContent.innerHTML='<div class="review-letter"><div class="review-label">📜 复盘信</div><div class="review-letter-box">'+letter.replace(/\n/g,'<br>')+'</div></div>';
+    reviewPanel.scrollTop=0;
+
+    // 1.5 秒后出现卡片
+    if(card){
+      setTimeout(function(){
+        const cardDiv=document.createElement("div");
+        cardDiv.className="review-card";
+        cardDiv.innerHTML='<div class="review-label">🃏 你的卡片</div><div class="review-card-box"><div class="review-card-preview">'+card.replace(/\n/g,'<br>')+'</div></div>';
+        reviewContent.appendChild(cardDiv);
+        reviewPanel.scrollTop=0;
+      },1500);
+    }
+
+    reviewBackRow.style.display="block";
+  }
+
+  // 显示复盘错误
+  function showReviewError(msg){
+    reviewContent.innerHTML='<div class="review-waiting"><div class="review-waiting-text" style="color:var(--accent)">复盘生成失败</div><p style="font-size:13px;color:var(--sub);margin-top:8px">'+msg+'</p></div>';
+    reviewBackRow.style.display="block";
+  }
+
+  // 启动复盘流程
+  async function startReview(){
+    const history=buildChatHistory();
+    if(!history.trim()||history.split("\n").filter(l=>l.trim()).length<2){
+      alert("请先和导师聊上一段再复盘哦");
+      return;
+    }
+
+    showReviewPanel();
+    showReviewWaiting();
+    reviewStartBtn.disabled=true;
+
+    try{
+      // ① 启动异步工作流
+      const startRes=await fetch("/api/review",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          session_id:sessionId,
+          mentor:currentMentor,
+          chat_history:history
+        })
+      });
+      const startData=await startRes.json();
+
+      if(startData.error){
+        showReviewError(startData.error);
+        reviewStartBtn.disabled=false;
+        return;
+      }
+
+      // ② 轮询结果
+      pollReview(startData.execute_id);
+    }catch(err){
+      showReviewError("网络错误，请稍后重试");
+      reviewStartBtn.disabled=false;
+    }
+  }
+
+  function pollReview(executeId){
+    let attempts=0;
+    const maxAttempts=35; // 35 × 4s = 140s，覆盖 105s 上限
+
+    function tick(){
+      attempts++;
+      fetch("/api/review?eid="+encodeURIComponent(executeId)+"&sid="+encodeURIComponent(sessionId)+"&mentor="+encodeURIComponent(currentMentor))
+        .then(r=>r.json())
+        .then(function(data){
+          if(data.status==="success"){
+            clearInterval(reviewPollTimer);
+            reviewPollTimer=null;
+            showReviewResult(data.letter,data.card);
+            reviewStartBtn.disabled=false;
+            return;
+          }
+          if(data.status==="fail"){
+            clearInterval(reviewPollTimer);
+            reviewPollTimer=null;
+            showReviewError(data.error||"工作流执行失败");
+            reviewStartBtn.disabled=false;
+            return;
+          }
+          // status === "running" → 继续等
+          if(attempts>=maxAttempts){
+            clearInterval(reviewPollTimer);
+            reviewPollTimer=null;
+            showReviewError("复盘超时，请稍后重试");
+            reviewStartBtn.disabled=false;
+            return;
+          }
+        })
+        .catch(function(){
+          // 网络抖动不中断轮询
+          if(attempts>=maxAttempts){
+            clearInterval(reviewPollTimer);
+            reviewPollTimer=null;
+            showReviewError("网络不稳定，复盘中断，请稍后重试");
+            reviewStartBtn.disabled=false;
+          }
+        });
+    }
+
+    tick(); // 立即第一次查询
+    reviewPollTimer=setInterval(tick,4000);
+  }
+
+  reviewStartBtn.addEventListener("click",startReview);
+  reviewBackBtn.addEventListener("click",function(){
+    if(reviewPollTimer){
+      clearInterval(reviewPollTimer);
+      reviewPollTimer=null;
+    }
+    hideReviewPanel();
+    reviewStartBtn.disabled=false;
   });
 </script>
 </body>

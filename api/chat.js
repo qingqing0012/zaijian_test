@@ -7,6 +7,15 @@
 const COZE_API_BASE = 'https://api.coze.cn';
 const WAIT_TIMEOUT_MS = 8000;
 
+// 导师 → 扣子 Bot ID 映射（Bot ID 非密钥，允许硬编码）
+const MENTOR_BOTS = {
+  "沈奕斐": "7647043981314179135",
+  "黄执中": "7647189192426029066",
+  "李松蔚": "7646981072140009481",
+  "胡彦斌": "7647049872747069483",
+  "易立竞": "7647040408144773158",
+};
+
 // ---- Supabase 写入（REST API，零依赖） ----
 async function supabaseInsert(row) {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -58,6 +67,7 @@ export default async function handler(req, res) {
     conversation_id,
     session_id,
     is_init,
+    mentor,
   } = body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -65,17 +75,15 @@ export default async function handler(req, res) {
   }
 
   const token = process.env.COZE_API_TOKEN;
-  const botId = process.env.COZE_BOT_ID;
-
-  if (!token || !botId || token.startsWith('pat_你的')) {
+  if (!token || token.startsWith('pat_你的')) {
     return res.status(500).json({
-      error: '后端配置缺失：请设置 COZE_API_TOKEN 和 COZE_BOT_ID',
+      error: '后端配置缺失：请设置 COZE_API_TOKEN',
     });
   }
 
-  // 当前阶段硬编码，2.4 扩展为多导师
-  const mentorName = '李松蔚';
-  const mentorBotId = botId;
+  // 多导师路由：根据 mentor 参数匹配 Bot ID，fallback 到李松蔚
+  const mentorName = (mentor && MENTOR_BOTS[mentor]) ? mentor : '李松蔚';
+  const mentorBotId = MENTOR_BOTS[mentorName];
   // 暂存用户消息，等拿到 bot 回复后一起入库（保证 Vercel 冻结前完成写入）
   const userMessage = message.trim();
   const shouldStore = !is_init && session_id;
@@ -89,7 +97,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        bot_id: botId,
+        bot_id: mentorBotId,
         user_id: 'zaijian-user',
         stream: true,
         auto_save_history: true,
