@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '请求体格式错误' });
     }
 
-    const { session_id, mentor, chat_history } = body;
+    const { session_id, mentor, chat_history, user_id } = body;
     if (!chat_history || typeof chat_history !== 'string' || chat_history.trim().length === 0) {
       return res.status(400).json({ error: '缺少 chat_history' });
     }
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           workflow_id: WORKFLOW_ID,
-          parameters: { chathistory: chat_history.trim() },
+          parameters: { chathistory: chat_history.trim(), mentor: mentor || '' },
           is_async: true,
         }),
       });
@@ -157,6 +157,7 @@ export default async function handler(req, res) {
     const executeId = url.searchParams.get('eid');
     const sessionId = url.searchParams.get('sid');
     const mentorName = url.searchParams.get('mentor');
+    const userId = url.searchParams.get('uid') || null;
 
     if (!executeId) {
       return res.status(400).json({ error: '缺少 eid 参数' });
@@ -206,15 +207,20 @@ export default async function handler(req, res) {
       if (status === 'Success') {
         const { fupan, kapian } = parseWorkflowOutput(record.output);
 
-        // 存 Supabase（不阻塞返回）
+        // 存 Supabase（不阻塞复盘展示）
         if (sessionId) {
-          supabaseInsertReview({
-            session_id: sessionId,
-            execute_id: executeId,
-            mentor_name: mentorName || null,
-            reflection_letter: fupan,
-            card_copy: kapian,
-          });
+          try {
+            await supabaseInsertReview({
+              session_id: sessionId,
+              execute_id: executeId,
+              mentor_name: mentorName || null,
+              reflection_letter: fupan,
+              card_copy: kapian,
+              user_id: userId,
+            });
+          } catch (insertErr) {
+            console.error('[review] Supabase 入库失败（复盘已生成）', insertErr);
+          }
         }
 
         return res.status(200).json({

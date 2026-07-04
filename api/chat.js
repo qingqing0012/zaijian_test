@@ -5,7 +5,7 @@
  */
 
 const COZE_API_BASE = 'https://api.coze.cn';
-const WAIT_TIMEOUT_MS = 8000;
+const WAIT_TIMEOUT_MS = 30000;
 
 // 导师 → 扣子 Bot ID 映射（Bot ID 非密钥，允许硬编码）
 const MENTOR_BOTS = {
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         bot_id: mentorBotId,
-        user_id: 'zaijian-user',
+        user_id: session_id || 'zaijian-user',
         stream: true,
         auto_save_history: true,
         ...(conversation_id ? { conversation_id } : {}),

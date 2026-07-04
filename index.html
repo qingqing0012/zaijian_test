@@ -6,6 +6,7 @@
 <title>你最像《再见爱人》里的谁</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+@font-face{font-family:'HuimouHandwrite';src:url('/fonts/huimou.ttf?v=2') format('truetype');font-weight:400;font-style:normal;font-display:block;}
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{ --accent:#c2698f; --accent-soft:#f6e9f0; --bg:#faf5f3; --bg2:#f5ebf1; --card:#fff; --ink:#2a2228; --sub:#8a7a85; --line:#f0e6ec; }
 html,body{min-height:100vh;}
@@ -95,14 +96,97 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 .review-letter,.review-card{animation:fadeInUp .5s ease both;}
 .review-card{animation-delay:.3s;}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
-.review-letter-box,.review-card-box{background:var(--accent-soft);border-radius:14px;padding:20px;font-size:15px;line-height:1.9;margin-bottom:14px;}
-.review-card-box{background:var(--card);border:2px solid var(--accent);border-radius:16px;}
+.review-letter-box{width:100%;max-width:100%;margin:28px auto 36px;padding:0 16px;box-sizing:border-box;background:transparent;border:none;box-shadow:none;overflow:visible;}
+.review-card-box{background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:20px;font-size:15px;line-height:1.9;margin-bottom:14px;}
+/* —— 复盘信：一页真实信纸 —— */
+/* TODO: 后续优化复盘信手写字体，当前 MVP 阶段先使用现有字体方案，不阻塞主流程验证。 */
+.review-letter-paper{position:relative;width:min(92vw,680px);max-width:100%;min-height:680px;margin:0 auto;padding:56px 52px 64px;box-sizing:border-box;overflow:hidden;border-radius:8px 14px 10px 12px;border:1px solid rgba(185,160,120,0.28);background:linear-gradient(rgba(255,250,238,0.18),rgba(255,250,238,0.24)),url('./letter-bg.png') center top/100% 100% no-repeat,#f5ecd8;box-shadow:0 18px 42px rgba(91,66,38,0.16),0 4px 10px rgba(91,66,38,0.08),inset 0 0 32px rgba(116,84,45,0.05);transform:none;}
+/* 右上角轻微卷边 */
+.review-letter-paper::before{content:"";position:absolute;top:0;right:0;width:58px;height:58px;z-index:3;background:linear-gradient(135deg,rgba(255,255,255,0.88) 0%,rgba(246,232,203,0.92) 42%,rgba(190,158,108,0.28) 44%,rgba(255,255,255,0) 46%);clip-path:polygon(100% 0,0 0,100% 100%);box-shadow:-5px 5px 12px rgba(100,75,45,0.10);pointer-events:none;}
+/* 纸张旧纸感和边缘层次 */
+.review-letter-paper::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(circle at 14% 12%,rgba(120,85,40,0.05),transparent 28%),radial-gradient(circle at 86% 88%,rgba(120,85,40,0.05),transparent 30%),linear-gradient(90deg,rgba(112,80,40,0.05),transparent 8%,transparent 92%,rgba(112,80,40,0.04));}
+/* 正文手写体 */
+.review-letter-content{position:relative;z-index:2;width:100%;box-sizing:border-box;font-family:'HuimouHandwrite','STKaiti','KaiTi','Songti SC',serif !important;font-size:18px;line-height:2.0;letter-spacing:0.02em;color:#3a2a20;text-align:left;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;text-shadow:0 1px 0 rgba(255,255,255,0.42);}
+.review-letter-content p{margin:0 0 24px;}
 .review-label{font-size:12px;letter-spacing:1.5px;color:var(--accent);margin-bottom:10px;font-weight:500;}
 .review-card-preview{font-size:14.5px;line-height:1.8;color:var(--ink);}
 .review-back-row{text-align:center;margin-top:6px;}
 .review-back-row button{background:none;border:none;color:var(--sub);font-size:14px;cursor:pointer;font-family:'Noto Sans SC';padding:8px 16px;transition:color .15s;}
 .review-back-row button:hover{color:var(--accent);}
+/* —— 卡片视觉：文艺质感复古卡片 —— */
+.vintage-card-wrapper{background:#C99B8C;border-radius:10px;padding:12px;margin:16px auto 0;width:min(88vw,360px);box-shadow:0 4px 24px rgba(120,80,80,0.18);animation:fadeInUp .55s ease both;animation-delay:.3s;}
+.vintage-card{width:100%;aspect-ratio:3/4;min-height:460px;background:url(card-bg.webp) center/cover no-repeat;border-radius:8px;padding:20px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),inset 0 -1px 0 rgba(0,0,0,0.07);position:relative;display:flex;align-items:center;justify-content:center;}
+.vintage-card-inner{background:rgba(255,248,245,0.84);border-radius:6px;padding:32px 18px 24px;box-shadow:inset 0 0 36px rgba(201,155,140,0.14);width:100%;}
+.vintage-card-ornament{text-align:center;margin-bottom:24px;color:#B08072;font-family:'Noto Serif SC',serif;font-size:13px;letter-spacing:3px;user-select:none;}
+.vintage-card-ornament::before,.vintage-card-ornament::after{content:'';display:inline-block;width:28px;height:1px;background:#C99B8C;vertical-align:middle;margin:0 10px;opacity:0.45;}
+.vintage-card-body{font-family:'Noto Serif SC',serif;font-size:15px;line-height:2.05;color:#5A3D30;text-align:justify;word-break:break-word;}
+.vintage-card-body p{margin:0 0 14px;}
+.vintage-card-body p:last-child{margin-bottom:0;}
+.vintage-card-footer{margin-top:26px;text-align:right;font-family:'Noto Serif SC',serif;font-size:12.5px;color:#7A5D50;letter-spacing:2px;user-select:none;}
+.vintage-card-download{display:flex;justify-content:center;margin-top:12px;}
+.vintage-card-download-btn{background:transparent;border:1.5px solid #C99B8C;color:#8A6D60;padding:8px 24px;border-radius:20px;font-size:13px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;transition:all .2s;}
+.vintage-card-download-btn:hover{background:#C99B8C;color:#fff;}
+/* —— 移动端：复盘信纸适配 —— */
+@media(max-width:640px){
+.review-letter-box{padding:0 10px;}
+.review-letter-paper{width:min(94vw,420px);min-height:620px;padding:42px 28px 52px;border-radius:8px 12px 9px 10px;transform:none;}
+.review-letter-paper::before{width:46px;height:46px;}
+.review-letter-content{font-size:16px;line-height:1.95;letter-spacing:0.01em;}
+}
+/* —— 字体强制：复盘信正文及所有子元素 —— */
+.review-letter-content,
+.review-letter-content * {
+  font-family: 'HuimouHandwrite', 'STKaiti', 'KaiTi', 'Songti SC', serif !important;
+}
+/* —— 恋爱日记 —— */
+.diary-entry-btn{background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;font-family:'Noto Sans SC';text-decoration:underline;transition:color .15s;}
+.diary-entry-btn:hover{color:#a05070;}
+.diary-fixed-entry{text-align:center;padding:16px 0 8px;}
+.diary-fixed-entry button{background:none;border:1.5px solid var(--line);color:var(--sub);padding:8px 20px;border-radius:18px;font-size:13px;cursor:pointer;font-family:'Noto Sans SC';transition:all .15s;}
+.diary-fixed-entry button:hover{border-color:var(--accent);color:var(--accent);}
+.diary-section{padding:36px 32px 44px;}
+.diary-section h2{font-family:'Noto Serif SC',serif;font-size:24px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.diary-section .diary-subtitle{font-size:14px;color:var(--sub);margin-bottom:28px;line-height:1.7;}
+.diary-list{display:flex;flex-direction:column;gap:14px;}
+.diary-item{border:1px solid var(--line);border-radius:14px;padding:18px 20px;transition:all .15s;animation:fadeInUp .35s ease both;}
+.diary-item:hover{border-color:#d4b8a0;}
+.diary-item-date{font-size:12px;color:var(--sub);margin-bottom:4px;letter-spacing:0.5px;}
+.diary-item-mentor{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:6px;font-family:'Noto Serif SC',serif;}
+.diary-item-summary{font-size:13.5px;color:var(--ink);line-height:1.75;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.diary-item-actions{display:flex;gap:10px;}
+.diary-btn-sm{background:none;border:1px solid var(--line);padding:6px 14px;border-radius:12px;font-size:12.5px;cursor:pointer;font-family:'Noto Sans SC';color:var(--sub);transition:all .15s;}
+.diary-btn-sm:hover{border-color:var(--accent);color:var(--accent);}
+.diary-btn-sm.diary-btn-danger{color:#c97a7a;border-color:#e8c8c8;}
+.diary-btn-sm.diary-btn-danger:hover{background:#c97a7a;color:#fff;border-color:#c97a7a;}
+.diary-back-row{text-align:center;margin-top:20px;}
+.diary-back-row button{background:none;border:none;color:var(--accent);font-size:14px;cursor:pointer;font-family:'Noto Sans SC';transition:color .15s;}
+.diary-empty,.diary-loading,.diary-error{text-align:center;padding:48px 24px;color:var(--sub);font-size:14px;line-height:1.9;}
+.diary-error{color:#c97a7a;}
+.diary-detail{padding:0 4px;animation:fadeInUp .4s ease both;}
+.diary-detail-header{margin-bottom:20px;}
+.diary-detail-header h3{font-family:'Noto Serif SC',serif;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.diary-detail-date{font-size:12px;color:var(--sub);}
+.diary-detail-letter{background:var(--accent-soft);border-radius:14px;padding:24px;font-size:15px;line-height:1.9;color:var(--ink);margin-bottom:16px;}
+.diary-detail-card{margin-bottom:16px;}
+/* —— 观察室文字播客 —— */
+.podcast-gen-btn{background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:20px;font-size:14px;cursor:pointer;font-family:'Noto Sans SC';transition:all .2s;}
+.podcast-gen-btn:hover{opacity:.9;transform:translateY(-1px);}
+.podcast-gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.podcast-loading{text-align:center;padding:28px 20px 16px;color:var(--sub);font-size:14px;line-height:1.8;}
+.podcast-result{animation:fadeInUp .5s ease both;margin-top:16px;}
+.podcast-title{font-family:'Noto Serif SC',serif;font-size:20px;font-weight:700;color:var(--ink);text-align:center;margin-bottom:4px;}
+.podcast-guests{text-align:center;font-size:13px;color:var(--sub);margin-bottom:20px;}
+.podcast-block{background:#F4EEE0;border-radius:12px;padding:18px 20px;margin-bottom:12px;font-size:14.5px;line-height:1.9;color:#4A2F1E;}
+.podcast-block-label{font-size:12px;letter-spacing:1.5px;color:#C99B8C;margin-bottom:8px;font-weight:600;font-family:'Noto Serif SC',serif;}
+.podcast-dialogue{background:#F4EEE0;border-radius:12px;padding:20px;margin-bottom:12px;}
+.podcast-dialogue-label{font-size:12px;letter-spacing:1.5px;color:#C99B8C;margin-bottom:12px;font-weight:600;font-family:'Noto Serif SC',serif;}
+.podcast-line{margin-bottom:10px;font-size:14.5px;line-height:1.85;color:#4A2F1E;}
+.podcast-line:last-child{margin-bottom:0;}
+.podcast-speaker{font-weight:700;color:#C99B8C;font-family:'Noto Serif SC',serif;}
+.podcast-takeaway{background:#C99B8C;color:#fff;border-radius:12px;padding:20px 24px;margin-top:16px;font-family:'Noto Serif SC',serif;font-size:16px;line-height:1.85;text-align:center;letter-spacing:0.03em;}
+.podcast-takeaway-label{font-size:11px;letter-spacing:2px;opacity:.7;margin-bottom:8px;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -166,6 +250,13 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
       <input type="text" class="chat-input" id="chatInput" placeholder="💬 输入你的想法..." maxlength="2000">
       <button class="chat-send" id="chatSendBtn">发送</button>
     </div>
+  </div>
+  <!-- 恋爱日记 -->
+  <div class="card hidden" id="diaryCard">
+    <div class="diary-section" id="diarySection"></div>
+  </div>
+  <div class="diary-fixed-entry" id="diaryFixedEntry">
+    <button onclick="openDiary()">📖 恋爱日记</button>
   </div>
 </div>
 
@@ -246,6 +337,18 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   const mentorBar=document.getElementById("mentorBar");
   let conversationId=null;
   let sessionId=null;
+  let abortController=null;
+
+  // 获取或生成本地匿名 user_id（恋爱日记用）
+  function getOrCreateUserId(){
+    const LS_KEY='zaijian_user_id';
+    let uid=localStorage.getItem(LS_KEY);
+    if(!uid){
+      uid='zaijian_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
+      localStorage.setItem(LS_KEY,uid);
+    }
+    return uid;
+  }
   let currentMentor="李松蔚"; // 默认推荐
 
   // 渲染聊天页导师切换条（5 个 chip，当前选中高亮）
@@ -293,33 +396,15 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   });
 
   async function initChat(){
+    // 终止上一次请求，防止旧回应污染新对话
+    if(abortController){abortController.abort();}
+    abortController=new AbortController();
+
+    // 全新的空会话：不发"你好"，等用户第一条真实消息时由 Coze 自动创建 conversation_id
     conversationId=null;
     sessionId=crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);
-    chatMsgs.innerHTML='';
+    chatMsgs.innerHTML='<div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>';
     chatInput.value="";
-    chatSendBtn.disabled=true;
-    showChatTyping();
-
-    try{
-      const res=await fetch("/api/chat",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({message:"你好",is_init:true,session_id:sessionId,mentor:currentMentor})
-      });
-      const data=await res.json();
-      hideChatTyping();
-
-      if(data.reply){
-        addChatMsg("bot",data.reply);
-        conversationId=data.conversation_id;
-      }else{
-        chatMsgs.innerHTML='<div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>';
-      }
-    }catch(err){
-      hideChatTyping();
-      chatMsgs.innerHTML='<div class="chat-empty">连接失败<br>请检查网络后刷新重试</div>';
-    }
-
     chatSendBtn.disabled=false;
     chatInput.focus();
   }
@@ -366,7 +451,8 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
       const res=await fetch("/api/chat",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(body)
+        body:JSON.stringify(body),
+        signal:abortController?abortController.signal:undefined
       });
 
       const data=await res.json();
@@ -381,6 +467,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
         addChatMsg("bot","（机器人没有返回回复，请稍后重试）");
       }
     }catch(err){
+      if(err.name==="AbortError")return;
       hideChatTyping();
       addChatMsg("bot","网络错误，请检查网络后重试");
     }
@@ -441,7 +528,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 
   // 显示复盘结果（先信后卡）
   function showReviewResult(letter,card){
-    reviewContent.innerHTML='<div class="review-letter"><div class="review-label">📜 复盘信</div><div class="review-letter-box">'+letter.replace(/\n/g,'<br>')+'</div></div>';
+    reviewContent.innerHTML='<div class="review-letter"><div class="review-label">📜 复盘信</div><div class="review-letter-box"><div class="review-letter-paper"><div class="review-letter-content">'+letter.replace(/\n/g,'<br>')+'</div></div></div></div>';
     reviewPanel.scrollTop=0;
 
     // 1.5 秒后出现卡片
@@ -449,8 +536,34 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
       setTimeout(function(){
         const cardDiv=document.createElement("div");
         cardDiv.className="review-card";
-        cardDiv.innerHTML='<div class="review-label">🃏 你的卡片</div><div class="review-card-box"><div class="review-card-preview">'+card.replace(/\n/g,'<br>')+'</div></div>';
+        cardDiv.innerHTML='<div class="review-label">🃏 你的卡片</div>'
+          +'<div class="vintage-card-wrapper" id="vintageCardWrapper">'
+          +'<div class="vintage-card" id="vintageCard">'
+          +'<div class="vintage-card-inner">'
+          +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 卡 片&nbsp;&nbsp;◆</div>'
+          +'<div class="vintage-card-body">'+card.replace(/\n/g,'<br>')+'</div>'
+          +'<div class="vintage-card-footer">—— ' + currentMentor + ' · 再见爱人</div>'
+          +'</div></div>'
+          +'<div class="vintage-card-download"><button class="vintage-card-download-btn" onclick="downloadVintageCard()">↓ 保存卡片</button></div>'
+          +'</div>';
+        // 存复盘数据供观察室使用
+        currentReviewData={session_id:sessionId,reflection_letter:letter,card_copy:card};
+
+        // 观察室播客入口
+        const podcastRow=document.createElement("div");
+        podcastRow.style.cssText="text-align:center;margin:14px 0 8px;animation:fadeInUp .5s ease both;animation-delay:.7s;";
+        podcastRow.innerHTML='<button class="podcast-gen-btn" id="podcastReviewBtn" onclick="generatePodcastFromReview()">🎙 生成这次的观察室</button>';
+        const podcastReviewResult=document.createElement("div");
+        podcastReviewResult.id="podcastReviewResult";
+
+        // 恋爱日记入口
+        const diaryRow=document.createElement("div");
+        diaryRow.style.cssText="text-align:center;margin-top:18px;animation:fadeInUp .5s ease both;animation-delay:.8s;";
+        diaryRow.innerHTML='<span style="font-size:13px;color:var(--sub);">已存入你的恋爱日记</span>&nbsp;&nbsp;<button class="diary-entry-btn" onclick="openDiary()">查看恋爱日记 →</button>';
         reviewContent.appendChild(cardDiv);
+        reviewContent.appendChild(podcastRow);
+        reviewContent.appendChild(podcastReviewResult);
+        reviewContent.appendChild(diaryRow);
         reviewPanel.scrollTop=0;
       },1500);
     }
@@ -484,7 +597,8 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
         body:JSON.stringify({
           session_id:sessionId,
           mentor:currentMentor,
-          chat_history:history
+          chat_history:history,
+          user_id:getOrCreateUserId()
         })
       });
       const startData=await startRes.json();
@@ -505,11 +619,11 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 
   function pollReview(executeId){
     let attempts=0;
-    const maxAttempts=35; // 35 × 4s = 140s，覆盖 105s 上限
+    const maxAttempts=45; // 45 × 4s = 180s
 
     function tick(){
       attempts++;
-      fetch("/api/review?eid="+encodeURIComponent(executeId)+"&sid="+encodeURIComponent(sessionId)+"&mentor="+encodeURIComponent(currentMentor))
+      fetch("/api/review?eid="+encodeURIComponent(executeId)+"&sid="+encodeURIComponent(sessionId)+"&mentor="+encodeURIComponent(currentMentor)+"&uid="+encodeURIComponent(getOrCreateUserId()))
         .then(r=>r.json())
         .then(function(data){
           if(data.status==="success"){
@@ -550,7 +664,27 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     reviewPollTimer=setInterval(tick,4000);
   }
 
-  reviewStartBtn.addEventListener("click",startReview);
+  // 卡片下载（html2canvas 截图）
+function downloadVintageCard(){
+  const card=document.getElementById("vintageCard");
+  if(!card)return;
+  const btn=document.querySelector(".vintage-card-download-btn");
+  if(btn)btn.style.display="none";
+  html2canvas(card,{scale:2,backgroundColor:"#C99B8C",useCORS:true,allowTaint:false}).then(function(canvas){
+    const a=document.createElement("a");
+    const name=(document.getElementById("rName")?.textContent||"卡片").replace(/型$/,"");
+    a.download="再见爱人-"+name+"卡片.png";
+    a.href=canvas.toDataURL("image/png");
+    a.click();
+    if(btn)btn.style.display="";
+  }).catch(function(err){
+    console.error("卡片保存失败",err);
+    alert("保存失败，请截图保存");
+    if(btn)btn.style.display="";
+  });
+}
+
+reviewStartBtn.addEventListener("click",startReview);
   reviewBackBtn.addEventListener("click",function(){
     if(reviewPollTimer){
       clearInterval(reviewPollTimer);
@@ -559,6 +693,317 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     hideReviewPanel();
     reviewStartBtn.disabled=false;
   });
+
+  // ===== 恋爱日记 =====
+  const diaryCard=document.getElementById("diaryCard"),diarySection=document.getElementById("diarySection");
+  let currentDiaryItem=null;
+  let currentReviewData=null;
+  let podcastPollTimer=null;
+
+  function openDiary(){
+    homeCard.classList.add("hidden");quizCard.classList.add("hidden");resultCard.classList.add("hidden");chatCard.classList.add("hidden");
+    diaryCard.classList.remove("hidden");
+    loadDiaryEntries();
+    window.scrollTo(0,0);
+  }
+
+  function closeDiary(){
+    diaryCard.classList.add("hidden");
+    homeCard.classList.remove("hidden");
+    window.scrollTo(0,0);
+  }
+
+  async function loadDiaryEntries(){
+    const userId=getOrCreateUserId();
+    diarySection.innerHTML='<div class="diary-loading">正在翻开你的恋爱日记…</div>';
+
+    try{
+      const res=await fetch("/api/diary?user_id="+encodeURIComponent(userId));
+      const data=await res.json();
+
+      if(!data.success){
+        diarySection.innerHTML='<div class="diary-error">恋爱日记暂时没有打开成功<br><span style="font-size:12px;">请稍后再试</span></div>';
+        console.error("[diary] 加载失败",data.error);
+        return;
+      }
+
+      if(!data.items||data.items.length===0){
+        renderDiaryEmpty();
+        return;
+      }
+
+      renderDiaryList(data.items);
+    }catch(err){
+      diarySection.innerHTML='<div class="diary-error">恋爱日记暂时没有打开成功<br><span style="font-size:12px;">请稍后再试</span></div>';
+      console.error("[diary] 网络错误",err);
+    }
+  }
+
+  function renderDiaryEmpty(){
+    diarySection.innerHTML=''
+      +'<h2>恋爱日记</h2>'
+      +'<p class="diary-subtitle">每一次复盘，都会在这里留下你关系里的一个节点。</p>'
+      +'<div class="diary-empty">还没有恋爱日记。<br>完成一次聊天复盘后，这里会自动留下你的关系记录。</div>'
+      +'<div class="diary-back-row"><button onclick="closeDiary()">← 返回首页</button></div>';
+  }
+
+  function renderDiaryList(items){
+    let html='<h2>恋爱日记</h2><p class="diary-subtitle">每一次复盘，都会在这里留下你关系里的一个节点。</p><div class="diary-list">';
+
+    items.forEach(function(item,i){
+      const created=(item.created_at?new Date(item.created_at):new Date());
+      const dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
+      const mentor=item.mentor_name||"关系导师";
+      const letter=item.reflection_letter||"";
+      const card=item.card_copy||"";
+      const summary=letter.substring(0,80)+(letter.length>80?"…":"");
+
+      html+='<div class="diary-item" style="animation-delay:'+(i*0.06)+'s">'
+        +'<div class="diary-item-date">'+dateStr+'</div>'
+        +'<div class="diary-item-mentor">'+mentor+'</div>'
+        +'<div class="diary-item-summary">'+(summary||card||"这是一条关系复盘记录。")+'</div>'
+        +'<div class="diary-item-actions">'
+        +'<button class="diary-btn-sm" onclick="renderDiaryDetail('+JSON.stringify(item).replace(/"/g,"&quot;")+')">查看这次复盘</button>'
+        +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除</button>'
+        +'</div></div>';
+    });
+
+    html+='</div><div class="diary-back-row"><button onclick="closeDiary()">← 返回首页</button></div>';
+    diarySection.innerHTML=html;
+  }
+
+  function renderDiaryDetail(item){
+    currentDiaryItem=item;
+    const created=(item.created_at?new Date(item.created_at):new Date());
+    const dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
+    const mentor=item.mentor_name||"关系导师";
+    const letter=item.reflection_letter||"";
+    const card=item.card_copy||"";
+
+    let html='<div class="diary-detail">'
+      +'<div class="diary-detail-header">'
+      +'<h3>'+mentor+'写给你的复盘信</h3>'
+      +'<div class="diary-detail-date">'+dateStr+'</div>'
+      +'</div>';
+
+    if(letter){
+      html+='<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
+    }
+
+    if(card){
+      html+='<div class="diary-detail-card">'
+        +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
+        +'<div class="vintage-card">'
+        +'<div class="vintage-card-inner">'
+        +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 卡 片&nbsp;&nbsp;◆</div>'
+        +'<div class="vintage-card-body">'+card.replace(/\n/g,"<br>")+'</div>'
+        +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
+        +'</div></div></div></div>';
+    }
+
+    html+='<div style="text-align:center;margin:18px 0 12px;">'
+      +'<button class="podcast-gen-btn" id="podcastGenBtn" onclick="generatePodcast()">🎙 生成这次的观察室</button>'
+      +'</div>'
+      +'<div class="podcast-result" id="podcastResult"></div>'
+      +'<div class="diary-item-actions" style="margin-top:16px;">'
+      +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
+      +'</div>'
+      +'<div class="diary-back-row"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>'
+      +'</div>';
+
+    diarySection.innerHTML=html;
+    diarySection.scrollTop=0;
+  }
+
+  function deleteDiaryEntry(id){
+    if(!confirm("确认删除这条恋爱日记吗？删除后无法恢复。"))return;
+
+    const userId=getOrCreateUserId();
+    fetch("/api/diary?id="+encodeURIComponent(id)+"&user_id="+encodeURIComponent(userId),{method:"DELETE"})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(data.success){
+          loadDiaryEntries();
+        }else{
+          alert("删除失败，请稍后再试");
+          console.error("[diary] 删除失败",data.error);
+        }
+      })
+      .catch(function(err){
+        alert("删除失败，请稍后再试");
+        console.error("[diary] 删除网络错误",err);
+      });
+  }
+
+  // ===== 观察室文字播客 =====
+  function generatePodcastFromReview(){
+    if(!currentReviewData||!currentReviewData.session_id){
+      alert("缺少对话记录，无法生成观察室");
+      return;
+    }
+    generatePodcast({
+      session_id:currentReviewData.session_id,
+      reflection_letter:currentReviewData.reflection_letter||"",
+      card_copy:currentReviewData.card_copy||"",
+      btnId:"podcastReviewBtn",
+      resultId:"podcastReviewResult"
+    });
+  }
+
+  async function generatePodcast(data){
+    let sid,refLetter,cardCopy,btnId,resultId;
+
+    if(data){
+      sid=data.session_id;
+      refLetter=data.reflection_letter||"";
+      cardCopy=data.card_copy||"";
+      btnId=data.btnId||"podcastGenBtn";
+      resultId=data.resultId||"podcastResult";
+    }else{
+      const item=currentDiaryItem;
+      if(!item||!item.session_id){
+        alert("缺少对话记录，无法生成观察室");
+        return;
+      }
+      sid=item.session_id;
+      refLetter=item.reflection_letter||"";
+      cardCopy=item.card_copy||"";
+      btnId="podcastGenBtn";
+      resultId="podcastResult";
+    }
+
+    const btn=document.getElementById(btnId);
+    const result=document.getElementById(resultId);
+    if(btn){btn.disabled=true;btn.textContent="观察室正在讨论中…";}
+    if(result)result.innerHTML='<div class="podcast-loading">🎙 观察室正在讨论中…<br><span style="font-size:12px;">这需要约 40-60 秒，请耐心等待</span></div>';
+
+    // 清理上一次轮询
+    if(podcastPollTimer){clearInterval(podcastPollTimer);podcastPollTimer=null;}
+
+    try{
+      const startRes=await fetch("/api/podcast",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          session_id:sid,
+          reflection_letter:refLetter,
+          card_copy:cardCopy
+        })
+      });
+      const startData=await startRes.json();
+
+      if(startData.error){
+        if(result)result.innerHTML='<div class="podcast-loading" style="color:#c97a7a;">生成失败：'+startData.error+'</div>';
+        if(btn){btn.disabled=false;btn.textContent="🎙 生成这次的观察室";}
+        return;
+      }
+
+      pollPodcast(startData.execute_id,btn,result);
+    }catch(err){
+      if(result)result.innerHTML='<div class="podcast-loading" style="color:#c97a7a;">网络错误，请稍后重试</div>';
+      if(btn){btn.disabled=false;btn.textContent="🎙 生成这次的观察室";}
+      console.error("[podcast] 启动失败",err);
+    }
+  }
+
+  function pollPodcast(executeId,btn,result){
+    let attempts=0;
+    const maxAttempts=45;
+
+    function tick(){
+      attempts++;
+      fetch("/api/podcast?execute_id="+encodeURIComponent(executeId))
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(data.status==="success"){
+            clearInterval(podcastPollTimer);
+            podcastPollTimer=null;
+            renderPodcastResult(data,result);
+            if(btn){btn.style.display="none";}
+            return;
+          }
+          if(data.status==="fail"){
+            clearInterval(podcastPollTimer);
+            podcastPollTimer=null;
+            if(result)result.innerHTML='<div class="podcast-loading" style="color:#c97a7a;">生成失败：'+(data.error||"未知错误")+'</div>';
+            if(btn){btn.disabled=false;btn.textContent="🎙 重新生成";}
+            return;
+          }
+          if(attempts>=maxAttempts){
+            clearInterval(podcastPollTimer);
+            podcastPollTimer=null;
+            if(result)result.innerHTML='<div class="podcast-loading" style="color:#c97a7a;">生成超时，请稍后重试</div>';
+            if(btn){btn.disabled=false;btn.textContent="🎙 重新生成";}
+            return;
+          }
+        })
+        .catch(function(){
+          if(attempts>=maxAttempts){
+            clearInterval(podcastPollTimer);
+            podcastPollTimer=null;
+            if(result)result.innerHTML='<div class="podcast-loading" style="color:#c97a7a;">网络不稳定，请稍后重试</div>';
+            if(btn){btn.disabled=false;btn.textContent="🎙 重新生成";}
+          }
+        });
+    }
+
+    tick();
+    podcastPollTimer=setInterval(tick,4000);
+  }
+
+  function renderPodcastResult(data,result){
+    if(!result)return;
+
+    let html='<div class="podcast-result">';
+
+    // title
+    if(data.title){
+      html+='<div class="podcast-title">'+data.title+'</div>';
+    }
+
+    // mentors_used
+    if(data.mentors_used){
+      html+='<div class="podcast-guests">本期嘉宾：'+data.mentors_used+'</div>';
+    }
+
+    // opening
+    if(data.opening){
+      html+='<div class="podcast-block"><div class="podcast-block-label">开场</div>'+data.opening.replace(/\n/g,"<br>")+'</div>';
+    }
+
+    // dialogue — 对话样式
+    if(data.dialogue){
+      html+='<div class="podcast-dialogue"><div class="podcast-dialogue-label">讨论实录</div>';
+      const lines=data.dialogue.split("\n");
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i].trim();
+        if(!line)continue;
+        var colonIdx=line.indexOf("：");
+        if(colonIdx===-1)colonIdx=line.indexOf(":");
+        if(colonIdx>-1){
+          var speaker=line.substring(0,colonIdx).trim();
+          var content=line.substring(colonIdx+1).trim();
+          html+='<div class="podcast-line"><span class="podcast-speaker">'+speaker+'：</span>'+content+'</div>';
+        }else{
+          html+='<div class="podcast-line">'+line+'</div>';
+        }
+      }
+      html+='</div>';
+    }
+
+    // closing
+    if(data.closing){
+      html+='<div class="podcast-block"><div class="podcast-block-label">收束</div>'+data.closing.replace(/\n/g,"<br>")+'</div>';
+    }
+
+    // takeaway
+    if(data.takeaway){
+      html+='<div class="podcast-takeaway"><div class="podcast-takeaway-label">✦ 本期金句</div>'+data.takeaway+'</div>';
+    }
+
+    html+='</div>';
+    result.innerHTML=html;
+  }
 </script>
 </body>
 </html>
