@@ -1,6 +1,7 @@
 /**
  * /api/chat — Vercel Serverless Function
- * 接收前端用户消息 → 存 Supabase → 调扣子 Bot（SSE 流式）→ 存回复 → 返回
+ * POST   → 接收用户消息 → 存 Supabase → 调扣子 Bot（SSE 流式）→ 存回复 → 返回
+ * GET    → ?user_id=xxx&mentor=xxx&action=history  读取历史消息
  * Token / 密钥仅存在于后端环境变量，绝不出现在前端代码中
  */
 
@@ -16,21 +17,22 @@ const MENTOR_BOTS = {
   "易立竞": "7647040408144773158",
 };
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
+
 // ---- Supabase 写入（REST API，零依赖） ----
 async function supabaseInsert(row) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    console.warn('[supabase] 未配置 SUPABASE_URL / SUPABASE_SECRET_KEY，跳过写入');
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.warn('[supabase] 未配置，跳过写入');
     return;
   }
 
   try {
-    await fetch(`${supabaseUrl}/rest/v1/chat_messages`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/chat_messages`, {
       method: 'POST',
       headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
@@ -41,18 +43,77 @@ async function supabaseInsert(row) {
   }
 }
 
+// ---- GET: 拉取历史消息 ----
+async function getHistory(userId, mentor, res) {
+  if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+    return res.status(400).json({ error: '缺少 user_id' });
+  }
+  if (!mentor || typeof mentor !== 'string' || mentor.trim().length === 0) {
+    return res.status(400).json({ error: '缺少 mentor' });
+  }
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(500).json({ error: '未配置 Supabase' });
+  }
+
+  const url = `${SUPABASE_URL}/rest/v1/chat_messages`
+    + `?user_id=eq.${encodeURIComponent(userId)}`
+    + `&mentor_name=eq.${encodeURIComponent(mentor)}`
+    + `&order=created_at.asc`
+    + `&limit=100`
+    + `&select=role,content,created_at,conversation_id`;
+
+  try {
+    const sr = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
+    });
+
+    if (!sr.ok) {
+      console.error('[chat] 历史查询失败', sr.status);
+      return res.status(502).json({ error: '历史查询失败' });
+    }
+
+    const messages = await sr.json();
+    return res.status(200).json({ success: true, messages });
+  } catch (err) {
+    console.error('[chat] 历史查询异常', err);
+    return res.status(502).json({ error: '历史查询失败' });
+  }
+}
+
 // ---- 主处理函数 ----
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // ====================================================
+  // GET — 拉取历史消息 ?user_id=xxx&mentor=xxx&action=history
+  // ====================================================
+  if (req.method === 'GET') {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const action = url.searchParams.get('action');
+    const userId = url.searchParams.get('user_id');
+    const mentor = url.searchParams.get('mentor');
+
+    if (action === 'history') {
+      return getHistory(userId, mentor, res);
+    }
+
+    return res.status(400).json({ error: '缺少 action 参数' });
+  }
+
+  // ====================================================
+  // POST — 发送消息
+  // ====================================================
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: '请使用 POST 方法' });
+    return res.status(405).json({ error: '请使用 POST 或 GET 方法' });
   }
 
   let body;
@@ -68,6 +129,7 @@ export default async function handler(req, res) {
     session_id,
     is_init,
     mentor,
+    user_id,
   } = body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -84,11 +146,50 @@ export default async function handler(req, res) {
   // 多导师路由：根据 mentor 参数匹配 Bot ID，fallback 到李松蔚
   const mentorName = (mentor && MENTOR_BOTS[mentor]) ? mentor : '李松蔚';
   const mentorBotId = MENTOR_BOTS[mentorName];
-  // 暂存用户消息，等拿到 bot 回复后一起入库（保证 Vercel 冻结前完成写入）
   const userMessage = message.trim();
   const shouldStore = !is_init && session_id;
 
+  // 构建上下文消息列表（绕过 Coze 不可靠的 auto_save_history）
+  async function buildContextMessages() {
+    const msgs = [];
+    // ① 尝试从数据库拉最近 20 条历史
+    if (user_id && SUPABASE_URL && SUPABASE_KEY) {
+      try {
+        const hurl = `${SUPABASE_URL}/rest/v1/chat_messages`
+          + `?user_id=eq.${encodeURIComponent(user_id)}`
+          + `&mentor_name=eq.${encodeURIComponent(mentorName)}`
+          + `&order=created_at.asc`
+          + `&limit=20`
+          + `&select=role,content`;
+        const hr = await fetch(hurl, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        });
+        if (hr.ok) {
+          const history = await hr.json();
+          for (const h of history) {
+            msgs.push({
+              role: h.role,
+              type: h.role === 'user' ? 'question' : 'answer',
+              content_type: 'text',
+              content: h.content || '',
+            });
+          }
+        }
+      } catch (e) { console.error('[chat] 历史加载失败', e); }
+    }
+    // ② 追加当前用户消息
+    msgs.push({
+      role: 'user',
+      type: 'question',
+      content_type: 'text',
+      content: userMessage,
+    });
+    return msgs;
+  }
+
   try {
+    const contextMessages = await buildContextMessages();
+
     // 调用扣子 v3/chat（SSE 流式）
     const cozeRes = await fetch(`${COZE_API_BASE}/v3/chat`, {
       method: 'POST',
@@ -98,18 +199,10 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         bot_id: mentorBotId,
-        user_id: session_id || 'zaijian-user',
+        user_id: user_id || session_id || 'zaijian-user',
         stream: true,
-        auto_save_history: true,
-        ...(conversation_id ? { conversation_id } : {}),
-        additional_messages: [
-          {
-            role: 'user',
-            type: 'question',
-            content_type: 'text',
-            content: message.trim(),
-          },
-        ],
+        auto_save_history: false,
+        additional_messages: contextMessages,
       }),
       signal: AbortSignal.timeout(WAIT_TIMEOUT_MS),
     });
@@ -171,6 +264,7 @@ export default async function handler(req, res) {
           content: userMessage,
           mentor_name: mentorName,
           mentor_bot_id: mentorBotId,
+          user_id: user_id || null,
         },
       ];
       if (reply) {
@@ -181,6 +275,7 @@ export default async function handler(req, res) {
           content: finalReply,
           mentor_name: mentorName,
           mentor_bot_id: mentorBotId,
+          user_id: user_id || null,
         });
       }
       for (const row of rows) await supabaseInsert(row);

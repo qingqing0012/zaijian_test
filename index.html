@@ -335,11 +335,11 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   const chatBackBtn=document.getElementById("chatBackBtn"),chatEntryBtn=document.getElementById("chatEntryBtn");
   const chatMentorName=document.getElementById("chatMentorName"),chatMentorSub=document.getElementById("chatMentorSub");
   const mentorBar=document.getElementById("mentorBar");
-  let conversationId=null;
-  let sessionId=null;
   let abortController=null;
+  let currentConversationId=null;  // 当前导师的 Coze conversation_id
+  let currentSessionId=null;       // 当前导师的前端 session_id
 
-  // 获取或生成本地匿名 user_id（恋爱日记用）
+  // 获取或生成本地匿名 user_id
   function getOrCreateUserId(){
     const LS_KEY='zaijian_user_id';
     let uid=localStorage.getItem(LS_KEY);
@@ -348,6 +348,69 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
       localStorage.setItem(LS_KEY,uid);
     }
     return uid;
+  }
+
+  // —— per-mentor 状态持久化 ——
+  function getConvMap(){try{return JSON.parse(localStorage.getItem('zaijian_conv_map')||'{}');}catch(e){return{};}}
+  function setConvMap(map){localStorage.setItem('zaijian_conv_map',JSON.stringify(map));}
+  function getSessMap(){try{return JSON.parse(localStorage.getItem('zaijian_sess_map')||'{}');}catch(e){return{};}}
+  function setSessMap(map){localStorage.setItem('zaijian_sess_map',JSON.stringify(map));}
+  function getMsgCache(){try{return JSON.parse(localStorage.getItem('zaijian_msg_cache')||'{}');}catch(e){return{};}}
+  function setMsgCache(map){localStorage.setItem('zaijian_msg_cache',JSON.stringify(map));}
+
+  function saveMentorState(mentorName){
+    if(!mentorName)return;
+    var cm=getConvMap();cm[mentorName]=currentConversationId||null;setConvMap(cm);
+    var sm=getSessMap();sm[mentorName]=currentSessionId||null;setSessMap(sm);
+    // 缓存当前聊天窗口消息
+    if(chatMsgs){
+      var msgs=[];chatMsgs.querySelectorAll('.chat-msg').forEach(function(m){
+        msgs.push({role:m.classList.contains('chat-msg-user')?'user':'assistant',content:m.textContent});
+      });
+      var mc=getMsgCache();mc[mentorName]=msgs;setMsgCache(mc);
+    }
+  }
+
+  function loadMentorState(mentorName){
+    var cm=getConvMap();var sm=getSessMap();
+    currentConversationId=cm[mentorName]||null;
+    currentSessionId=sm[mentorName]||crypto.randomUUID();
+    if(!sm[mentorName]){sm[mentorName]=currentSessionId;setSessMap(sm);}
+  }
+
+  // 从缓存渲染消息（瞬切）
+  function renderCachedMessages(mentorName){
+    chatMsgs.innerHTML='';
+    var mc=getMsgCache();var msgs=mc[mentorName];
+    if(msgs&&msgs.length>0){
+      msgs.forEach(function(m){addChatMsg(m.role,m.content);});
+    }else{
+      chatMsgs.innerHTML='<div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>';
+    }
+  }
+
+  // 从后端拉取历史并回填（异步，静默修正）
+  async function syncChatHistory(mentorName){
+    var userId=getOrCreateUserId();
+    try{
+      var res=await fetch('/api/chat?action=history&user_id='+encodeURIComponent(userId)+'&mentor='+encodeURIComponent(mentorName));
+      var data=await res.json();
+      if(data.success&&data.messages&&data.messages.length>0){
+        // 用后端数据更新缓存
+        var msgs=data.messages.map(function(m){return{role:m.role,content:m.content};});
+        var mc=getMsgCache();mc[mentorName]=msgs;setMsgCache(mc);
+        // 恢复首个 conversation_id（只有首次创建的能延续 Coze 上下文）
+        for(var i=0;i<data.messages.length;i++){
+          if(data.messages[i].conversation_id){
+            var cm=getConvMap();cm[mentorName]=data.messages[i].conversation_id;setConvMap(cm);
+            if(currentMentor===mentorName&&!currentConversationId){currentConversationId=data.messages[i].conversation_id;}
+            break;
+          }
+        }
+        // 只有当前导师才重绘
+        if(currentMentor===mentorName){renderCachedMessages(mentorName);}
+      }
+    }catch(e){console.error('[chat] 历史同步失败',e);}
   }
   let currentMentor="李松蔚"; // 默认推荐
 
@@ -366,14 +429,28 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     }
   }
 
-  // 切换导师：清屏 + 新 session + 新握手
+  // 切换导师：保存当前 → 加载目标 → 渲染缓存 → 异步同步历史
   function switchMentor(mentorName){
+    if(mentorName===currentMentor)return;
+    // 终止请求
+    if(abortController){abortController.abort();abortController=new AbortController();}
+    // 保存当前导师状态
+    saveMentorState(currentMentor);
+    // 切换
     currentMentor=mentorName;
     const m=mentors[mentorName];
     chatMentorName.textContent=mentorName+"导师";
     chatMentorSub.textContent=m?m.subtitle:"";
     renderMentorBar();
-    initChat();
+    // 加载目标导师状态
+    loadMentorState(mentorName);
+    // 渲染缓存（秒切）
+    renderCachedMessages(mentorName);
+    chatInput.value="";
+    chatSendBtn.disabled=false;
+    chatInput.focus();
+    // 异步从后端同步历史
+    syncChatHistory(mentorName);
   }
 
   // 结果页 → 聊天页（默认李松蔚）
@@ -384,7 +461,12 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     resultCard.classList.add("hidden");
     chatCard.classList.remove("hidden");
     renderMentorBar();
-    initChat();
+    loadMentorState("李松蔚");
+    renderCachedMessages("李松蔚");
+    chatInput.value="";
+    chatSendBtn.disabled=false;
+    chatInput.focus();
+    syncChatHistory("李松蔚");
     window.scrollTo(0,0);
   });
 
@@ -395,14 +477,14 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     window.scrollTo(0,0);
   });
 
-  async function initChat(){
-    // 终止上一次请求，防止旧回应污染新对话
-    if(abortController){abortController.abort();}
-    abortController=new AbortController();
-
-    // 全新的空会话：不发"你好"，等用户第一条真实消息时由 Coze 自动创建 conversation_id
-    conversationId=null;
-    sessionId=crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+  // 硬重置当前导师对话（清缓存 + 清 Coze 上下文）
+  function resetCurrentMentor(){
+    saveMentorState(currentMentor);
+    currentConversationId=null;
+    currentSessionId=crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+    var cm=getConvMap();delete cm[currentMentor];setConvMap(cm);
+    var sm=getSessMap();sm[currentMentor]=currentSessionId;setSessMap(sm);
+    var mc=getMsgCache();delete mc[currentMentor];setMsgCache(mc);
     chatMsgs.innerHTML='<div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>';
     chatInput.value="";
     chatSendBtn.disabled=false;
@@ -445,8 +527,8 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     showChatTyping();
 
     try{
-      const body={message:text,session_id:sessionId,mentor:currentMentor};
-      if(conversationId)body.conversation_id=conversationId;
+      const body={message:text,session_id:currentSessionId,mentor:currentMentor,user_id:getOrCreateUserId()};
+      if(currentConversationId)body.conversation_id=currentConversationId;
 
       const res=await fetch("/api/chat",{
         method:"POST",
@@ -460,7 +542,8 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 
       if(data.reply){
         addChatMsg("bot",data.reply);
-        if(data.conversation_id)conversationId=data.conversation_id;
+        // 仅在首条消息时保存 conversation_id（Coze 每次返回新 ID，只有首个能延续上下文）
+        if(data.conversation_id&&!currentConversationId){currentConversationId=data.conversation_id;var cm=getConvMap();cm[currentMentor]=currentConversationId;setConvMap(cm);}
       }else if(data.error){
         addChatMsg("bot","抱歉，出了点问题："+data.error);
       }else{
@@ -547,7 +630,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
           +'<div class="vintage-card-download"><button class="vintage-card-download-btn" onclick="downloadVintageCard()">↓ 保存卡片</button></div>'
           +'</div>';
         // 存复盘数据供观察室使用
-        currentReviewData={session_id:sessionId,reflection_letter:letter,card_copy:card};
+        currentReviewData={session_id:currentSessionId,reflection_letter:letter,card_copy:card};
 
         // 观察室播客入口
         const podcastRow=document.createElement("div");
@@ -595,7 +678,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          session_id:sessionId,
+          session_id:currentSessionId,
           mentor:currentMentor,
           chat_history:history,
           user_id:getOrCreateUserId()
@@ -623,7 +706,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 
     function tick(){
       attempts++;
-      fetch("/api/review?eid="+encodeURIComponent(executeId)+"&sid="+encodeURIComponent(sessionId)+"&mentor="+encodeURIComponent(currentMentor)+"&uid="+encodeURIComponent(getOrCreateUserId()))
+      fetch("/api/review?eid="+encodeURIComponent(executeId)+"&sid="+encodeURIComponent(currentSessionId)+"&mentor="+encodeURIComponent(currentMentor)+"&uid="+encodeURIComponent(getOrCreateUserId()))
         .then(r=>r.json())
         .then(function(data){
           if(data.status==="success"){
