@@ -463,29 +463,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     syncChatHistory(mentorName);
   }
 
-  // 返回当前导师继续对话（带历史，不新建）
-  function continueWithMentor(mentorName,sessionId){
-    currentMentor=mentorName;
-    chatMentorName.textContent=mentorName+"导师";
-    chatMentorSub.textContent=mentors[mentorName]?mentors[mentorName].subtitle:"";
-    homeCard.classList.add("hidden");quizCard.classList.add("hidden");resultCard.classList.add("hidden");diaryCard.classList.add("hidden");
-    chatCard.classList.remove("hidden");
-    renderMentorBar();
-    // 尝试恢复原 session 的 conversation_id 和消息缓存
-    loadMentorState(mentorName);
-    if(sessionId){
-      var sm=getSessMap();sm[mentorName]=sessionId;setSessMap(sm);
-      currentSessionId=sessionId;
-    }
-    renderCachedMessages(mentorName);
-    chatInput.value="";
-    chatSendBtn.disabled=false;
-    chatInput.focus();
-    syncChatHistory(mentorName);
-    window.scrollTo(0,0);
-  }
-
-  // 统一切换到导师聊天视图（新建空白对话）
+  // 统一切换到导师聊天视图（完全重置，不残留复盘内容）
   function resetToChatView(mentorName){
     currentMentor=mentorName;
     chatMentorName.textContent=mentorName+"导师";
