@@ -454,21 +454,31 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     syncChatHistory(mentorName);
   }
 
-  // 结果页 → 聊天页（默认李松蔚）
-  chatEntryBtn.addEventListener("click",function(){
-    currentMentor="李松蔚";
-    chatMentorName.textContent="李松蔚导师";
-    chatMentorSub.textContent=mentors["李松蔚"].subtitle;
+  // 统一切换到导师聊天视图
+  function resetToChatView(mentorName){
+    currentMentor=mentorName;
+    chatMentorName.textContent=mentorName+"导师";
+    chatMentorSub.textContent=mentors[mentorName]?mentors[mentorName].subtitle:"";
+    // 隐藏所有非聊天卡片
+    homeCard.classList.add("hidden");
+    quizCard.classList.add("hidden");
     resultCard.classList.add("hidden");
+    diaryCard.classList.add("hidden");
+    // 显示聊天
     chatCard.classList.remove("hidden");
     renderMentorBar();
-    loadMentorState("李松蔚");
-    renderCachedMessages("李松蔚");
+    loadMentorState(mentorName);
+    renderCachedMessages(mentorName);
     chatInput.value="";
     chatSendBtn.disabled=false;
     chatInput.focus();
-    syncChatHistory("李松蔚");
+    syncChatHistory(mentorName);
     window.scrollTo(0,0);
+  }
+
+  // 结果页 → 聊天页（默认李松蔚）
+  chatEntryBtn.addEventListener("click",function(){
+    resetToChatView("李松蔚");
   });
 
   // 聊天页 → 返回结果页
@@ -921,6 +931,17 @@ reviewStartBtn.addEventListener("click",startReview);
     return {card_title:title,keywords:keywords,user_quote:userQuote,mentor_quote:mentorQuote};
   }
 
+  function viewFullReview(diaryId){
+    // 从当前列表找到对应 item 并重新渲染为完整复盘视图
+    if(!currentDiaryItem||currentDiaryItem.id!==diaryId){
+      // 重新获取
+      loadDiaryEntries();
+      return;
+    }
+    // 直接复用 renderDiaryDetail，它已经展示完整内容（卡片+信+观察室）
+    diarySection.scrollTop=0;
+  }
+
   function renderDiaryDetail(item){
     currentDiaryItem=item;
     const created=(item.created_at?new Date(item.created_at):new Date());
@@ -931,7 +952,8 @@ reviewStartBtn.addEventListener("click",startReview);
     const hasPodcast=!!(item.podcast_content);
     const derived=deriveDiaryCardFields(item);
 
-    let html='<div class="diary-detail">'
+    let html='<div class="diary-back-row" style="margin-bottom:16px;"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>'
+      +'<div class="diary-detail">'
       +'<div class="diary-detail-header">'
       +'<h3>'+mentor+'写给你的复盘信</h3>'
       +'<div class="diary-detail-date">'+dateStr+'</div>'
@@ -991,10 +1013,11 @@ reviewStartBtn.addEventListener("click",startReview);
         +'<div class="podcast-result" id="podcastResult"></div>';
     }
 
-    html+='<div class="diary-item-actions" style="margin-top:20px;">'
+    html+='<div class="diary-item-actions" style="margin-top:20px;flex-wrap:wrap;">'
+      +'<button class="diary-btn-sm" onclick="viewFullReview(\''+item.id+'\')">查看完整复盘</button>'
       +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
       +'</div>'
-      +'<div class="diary-back-row"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>'
+      +'<div class="diary-back-row"><button onclick="resetToChatView(\''+mentor+'\')">返回导师聊天</button></div>'
       +'</div>';
 
     diarySection.innerHTML=html;
