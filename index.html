@@ -856,6 +856,71 @@ reviewStartBtn.addEventListener("click",startReview);
     diarySection.innerHTML=html;
   }
 
+  // 从现有字段兜底推导关系记忆卡的 title/keywords/user_quote/mentor_quote
+  function deriveDiaryCardFields(item){
+    const letter=item.reflection_letter||"";
+    const card=item.card_copy||"";
+    const text=(letter+" "+card).toLowerCase();
+
+    // card_title
+    var title=item.card_title||"";
+    if(!title){
+      if(text.indexOf("纪念日")>-1||text.indexOf("生日")>-1) title="我在意的，不只是一个纪念日";
+      else if(text.indexOf("分手")>-1) title="关于分手，我想弄清楚的";
+      else if(text.indexOf("吵架")>-1||text.indexOf("冷战")>-1) title="那场争吵背后，我的真实感受";
+      else if(text.indexOf("习惯")>-1||text.indexOf("离不开")>-1) title="我不是离不开，而是还没想明白";
+      else title="这一次，我看见了自己的在意";
+    }
+
+    // keywords — 从文本中匹配
+    var kwList=["纪念日","生日","小题大做","重要节点","被看见","在意","关系规则","情绪回应","分手","复合","异地","习惯","投入","沟通","边界","合作","否定","委屈","失望"];
+    var found=[];
+    for(var i=0;i<kwList.length;i++){
+      if(text.indexOf(kwList[i])>-1) found.push(kwList[i]);
+      if(found.length>=5) break;
+    }
+    var keywords=item.keywords||(found.length>0?found.join(" / "):"本次复盘 · 关系记忆");
+
+    // user_quote — 从 reflection_letter 中提取带"我"的句子
+    var userQuote=item.user_quote||"";
+    if(!userQuote){
+      // 先在原始文本中找最可能像用户原话的句子
+      var sentences=letter.split(/[。！？\n]+/);
+      var bestQuote="";
+      for(var j=0;j<sentences.length;j++){
+        var s=sentences[j].trim();
+        if(!s)continue;
+        // 优先找"这不是第一次了""去年我生日""他忘了"这种用户原话特征
+        if(s.indexOf("这不是第一次")>-1||s.indexOf("去年我生日")>-1||s.indexOf("他忘了")>-1||s.indexOf("纪念日")>-1){
+          bestQuote=s;break;
+        }
+      }
+      // 没找到用户原话特征 → 找带"我"的第一句
+      if(!bestQuote){
+        for(var k=0;k<sentences.length;k++){
+          var s2=sentences[k].trim();
+          if(s2&&s2.indexOf("我")>-1&&s2.length<50){bestQuote=s2;break;}
+        }
+      }
+      userQuote=bestQuote||"这一次，我开始看见自己真正介意的地方。";
+    }
+
+    // mentor_quote
+    var mentorQuote=item.mentor_quote||card||"";
+    if(!mentorQuote){
+      // 从 reflection_letter 中取最短的完整句
+      var ls=letter.split(/[。\n]+/);
+      var shortest="";
+      for(var m=0;m<ls.length;m++){
+        var l=ls[m].trim();
+        if(l&&l.length>8&&(!shortest||l.length<shortest.length)) shortest=l;
+      }
+      mentorQuote=shortest||"你的在意值得被认真看见。";
+    }
+
+    return {card_title:title,keywords:keywords,user_quote:userQuote,mentor_quote:mentorQuote};
+  }
+
   function renderDiaryDetail(item){
     currentDiaryItem=item;
     const created=(item.created_at?new Date(item.created_at):new Date());
@@ -864,6 +929,7 @@ reviewStartBtn.addEventListener("click",startReview);
     const letter=item.reflection_letter||"";
     const card=item.card_copy||"";
     const hasPodcast=!!(item.podcast_content);
+    const derived=deriveDiaryCardFields(item);
 
     let html='<div class="diary-detail">'
       +'<div class="diary-detail-header">'
@@ -873,10 +939,10 @@ reviewStartBtn.addEventListener("click",startReview);
 
     // 关系记忆卡 — 结构化
     if(card){
-      var cardTitle=item.card_title||"这一次，我看见了自己的在意";
-      var keywords=item.keywords||"";
-      var userQuote=item.user_quote||"本次复盘暂未提取到原话";
-      var mentorQuote=card;
+      var cardTitle=derived.card_title;
+      var keywords=derived.keywords;
+      var userQuote=derived.user_quote;
+      var mentorQuote=derived.mentor_quote;
       html+='<div class="diary-card-label">🃏 关系记忆卡</div>'
         +'<div class="diary-detail-card">'
         +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
@@ -884,11 +950,9 @@ reviewStartBtn.addEventListener("click",startReview);
         +'<div class="vintage-card-inner">'
         +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 记 忆 卡&nbsp;&nbsp;◆</div>'
         +'<div style="font-family:\'Noto Serif SC\',serif;font-size:17px;font-weight:700;color:#3a2a20;text-align:center;margin-bottom:14px;">'+cardTitle+'</div>'
-        +'<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;">'+dateStr+'&nbsp;&nbsp;·&nbsp;&nbsp;本章导师：'+mentor+'</div>';
-      if(keywords){
-        html+='<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+keywords+'</span></div>';
-      }
-      html+='<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+userQuote+'”</span></div>'
+        +'<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;">'+dateStr+'&nbsp;&nbsp;·&nbsp;&nbsp;本章导师：'+mentor+'</div>'
+        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+keywords+'</span></div>'
+        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+userQuote+'”</span></div>'
         +'<div style="margin-bottom:4px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">导师留下的一句话</span><br><span style="font-size:15px;color:#3a2a20;font-family:\'Noto Serif SC\',serif;line-height:1.9;">'+mentorQuote+'</span></div>'
         +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
         +'</div></div></div></div>';
