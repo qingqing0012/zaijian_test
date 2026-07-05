@@ -933,10 +933,20 @@ reviewStartBtn.addEventListener("click",startReview);
 
   // 存 items 引用供时间轴点击使用
   var _diaryItems=[];
-  function viewDiaryFromTimeline(id){
-    for(var i=0;i<_diaryItems.length;i++){
-      if(_diaryItems[i].id===id){renderDiaryDetail(_diaryItems[i]);return;}
-    }
+  async function viewDiaryFromTimeline(id){
+    var userId=getOrCreateUserId();
+    diarySection.innerHTML='<div class="diary-loading">正在翻开…</div>';
+    try{
+      var res=await fetch("/api/diary?user_id="+encodeURIComponent(userId));
+      var data=await res.json();
+      if(data.success&&data.items){
+        _diaryItems=data.items;
+        for(var i=0;i<_diaryItems.length;i++){
+          if(_diaryItems[i].id===id){renderDiaryDetail(_diaryItems[i]);return;}
+        }
+      }
+      diarySection.innerHTML='<div class="diary-error">找不到这条记录</div>';
+    }catch(e){diarySection.innerHTML='<div class="diary-error">加载失败</div>';console.error(e);}
   }
 
   // 从现有字段兜底推导关系记忆卡的 title/keywords/user_quote/mentor_quote
@@ -1103,7 +1113,6 @@ reviewStartBtn.addEventListener("click",startReview);
     html+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:24px;">'
       +'<button class="r-btn r-btn-ghost" style="border:1.5px solid var(--line);" onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>'
       +'<button class="r-btn r-btn-ghost" style="border:1.5px solid var(--line);" onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>'
-      +'<button class="r-btn r-btn-ghost" style="border:1.5px solid var(--line);" onclick="continueWithMentor(\''+mentor+'\',\''+(item.session_id||'')+'\')">返回当前导师继续对话</button>'
       +'</div>';
 
     diarySection.innerHTML=html;
