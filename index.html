@@ -932,14 +932,113 @@ reviewStartBtn.addEventListener("click",startReview);
   }
 
   function viewFullReview(diaryId){
-    // 从当前列表找到对应 item 并重新渲染为完整复盘视图
     if(!currentDiaryItem||currentDiaryItem.id!==diaryId){
-      // 重新获取
       loadDiaryEntries();
       return;
     }
-    // 直接复用 renderDiaryDetail，它已经展示完整内容（卡片+信+观察室）
+    var item=currentDiaryItem;
+    var created=(item.created_at?new Date(item.created_at):new Date());
+    var dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
+    var mentor=item.mentor_name||"关系导师";
+    var letter=item.reflection_letter||"";
+    var card=item.card_copy||"";
+    var hasPodcast=!!(item.podcast_content);
+    var derived=deriveDiaryCardFields(item);
+    var html='<div class="diary-back-row" style="margin-bottom:16px;"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button>&nbsp;&nbsp;<button onclick="resetToChatView(\''+mentor+'\')">返回导师聊天</button></div>';
+
+    // 历史对话记录
+    html+='<div class="diary-card-label">💬 历史对话记录</div>'
+      +'<div class="diary-detail-letter">'
+      +'<div class="podcast-loading" id="chatHistoryLoading">加载对话记录中…</div>'
+      +'<div id="chatHistoryContent" style="display:none;"></div>'
+      +'</div>';
+
+    // 导师信
+    if(letter){
+      html+='<div class="diary-card-label" style="margin-top:20px;">📜 '+mentor+'写给你的一封信</div>'
+        +'<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
+    }
+
+    // 关系记忆卡
+    if(card){
+      html+='<div class="diary-card-label" style="margin-top:20px;">🃏 关系记忆卡</div>'
+        +'<div class="diary-detail-card">'
+        +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
+        +'<div class="vintage-card">'
+        +'<div class="vintage-card-inner">'
+        +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 记 忆 卡&nbsp;&nbsp;◆</div>'
+        +'<div style="font-family:\'Noto Serif SC\',serif;font-size:17px;font-weight:700;color:#3a2a20;text-align:center;margin-bottom:14px;">'+derived.card_title+'</div>'
+        +'<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;">'+dateStr+'&nbsp;&nbsp;·&nbsp;&nbsp;本章导师：'+mentor+'</div>'
+        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+derived.keywords+'</span></div>'
+        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+derived.user_quote+'”</span></div>'
+        +'<div style="margin-bottom:4px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">导师留下的一句话</span><br><span style="font-size:15px;color:#3a2a20;font-family:\'Noto Serif SC\',serif;line-height:1.9;">'+derived.mentor_quote+'</span></div>'
+        +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
+        +'</div></div></div></div>';
+    }
+
+    // 观察室
+    if(hasPodcast){
+      html+='<div class="diary-card-label" style="margin-top:20px;">🎙 观察室文字播客</div>';
+      if(item.podcast_title) html+='<div class="podcast-title">'+item.podcast_title+'</div>';
+      if(item.podcast_guests) html+='<div class="podcast-guests">本期嘉宾：'+item.podcast_guests+'</div>';
+      if(item.podcast_content){
+        html+='<div class="podcast-dialogue"><div class="podcast-dialogue-label">讨论实录</div>';
+        var lines=item.podcast_content.split("\n");
+        for(var i=0;i<lines.length;i++){
+          var line=lines[i].trim();if(!line)continue;
+          var ci=line.indexOf("：");if(ci===-1)ci=line.indexOf(":");
+          if(ci>-1){
+            html+='<div class="podcast-line"><span class="podcast-speaker">'+line.substring(0,ci).trim()+'：</span>'+line.substring(ci+1).trim()+'</div>';
+          }else{html+='<div class="podcast-line">'+line+'</div>';}
+        }
+        html+='</div>';
+      }
+      if(item.podcast_takeaway){
+        html+='<div class="podcast-takeaway"><div class="podcast-takeaway-label">✦ 本期金句</div>'+item.podcast_takeaway+'</div>';
+      }
+    }else{
+      html+='<div style="text-align:center;margin:20px 0 12px;">'
+        +'<button class="podcast-gen-btn" id="podcastGenBtn" onclick="generatePodcast({diaryId:\''+item.id+'\'})">🎙 进入观察室，听听他们怎么说</button>'
+        +'</div>'
+        +'<div class="podcast-result" id="podcastResult"></div>';
+    }
+
+    html+='<div class="diary-item-actions" style="margin-top:20px;">'
+      +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
+      +'</div>'
+      +'<div class="diary-back-row"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>';
+
+    diarySection.innerHTML=html;
     diarySection.scrollTop=0;
+
+    // 异步加载历史对话
+    loadChatHistoryForReview(item.session_id,item.mentor_name);
+  }
+
+  async function loadChatHistoryForReview(sessionId,mentorName){
+    var userId=getOrCreateUserId();
+    var loading=document.getElementById("chatHistoryLoading");
+    var content=document.getElementById("chatHistoryContent");
+    try{
+      var res=await fetch("/api/chat?action=history&user_id="+encodeURIComponent(userId)+"&mentor="+encodeURIComponent(mentorName));
+      var data=await res.json();
+      if(data.success&&data.messages&&data.messages.length>0){
+        var h="";
+        for(var i=0;i<data.messages.length;i++){
+          var m=data.messages[i];
+          var roleLabel=m.role==="user"?"用户":"导师";
+          h+='<div class="podcast-line" style="margin-bottom:8px;"><span class="podcast-speaker">'+roleLabel+'：</span>'+m.content+'</div>';
+        }
+        if(content)content.innerHTML=h;
+        if(content)content.style.display="";
+        if(loading)loading.style.display="none";
+      }else{
+        if(loading)loading.textContent="暂无对话记录";
+      }
+    }catch(e){
+      if(loading)loading.textContent="对话记录加载失败";
+      console.error(e);
+    }
   }
 
   function renderDiaryDetail(item){
