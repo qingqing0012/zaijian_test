@@ -116,6 +116,8 @@ export default async function handler(req, res) {
     }
 
     const patchUrl = `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(uid)}`;
+    console.log('[diary] save_podcast PATCH url:', patchUrl);
+    console.log('[diary] save_podcast content_len:', (podcast_content||'').length, 'title:', podcast_title);
     try {
       const sr = await fetch(patchUrl, {
         method: 'PATCH',
@@ -123,7 +125,7 @@ export default async function handler(req, res) {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
+          'Prefer': 'return=representation',
         },
         body: JSON.stringify({
           podcast_title: podcast_title || null,
@@ -134,10 +136,19 @@ export default async function handler(req, res) {
         }),
       });
       if (!sr.ok) {
-        console.error('[diary] 播客保存失败', sr.status);
-        return res.status(502).json({ success: false, error: '播客保存失败' });
+        const errText = await sr.text();
+        console.error('[diary] 播客保存失败', sr.status, errText);
+        return res.status(502).json({ success: false, error: '播客保存失败', status: sr.status });
       }
-      return res.status(200).json({ success: true });
+      // 读回确认写入
+      const updated = await sr.json();
+      const row = Array.isArray(updated) ? updated[0] : updated;
+      console.log('[diary] 播客保存成功，updated podcast_content_len:', (row&&row.podcast_content?row.podcast_content.length:0));
+      return res.status(200).json({
+        success: true,
+        updated_id: row ? row.id : id,
+        podcast_content_length: row&&row.podcast_content ? row.podcast_content.length : 0,
+      });
     } catch (err) {
       console.error('[diary] 播客保存异常', err);
       return res.status(502).json({ success: false, error: '播客保存失败' });

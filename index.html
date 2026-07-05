@@ -1024,20 +1024,30 @@ reviewStartBtn.addEventListener("click",startReview);
   // 保存播客到恋爱日记
   async function savePodcastToDiary(diaryId,data){
     var userId=getOrCreateUserId();
+    var body=JSON.stringify({
+      action:"save_podcast",
+      id:diaryId,
+      user_id:userId,
+      podcast_title:data.title||"",
+      podcast_content:data.dialogue||"",
+      podcast_guests:data.mentors_used||"",
+      podcast_takeaway:data.takeaway||""
+    });
+    console.log("[podcast] 保存请求 diaryId="+diaryId+" userId="+userId+" content_len="+(data.dialogue||"").length+" title="+(data.title||""));
     try{
-      await fetch("/api/diary",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          action:"save_podcast",
-          id:diaryId,
-          user_id:userId,
-          podcast_title:data.title||"",
-          podcast_content:data.dialogue||"",
-          podcast_guests:data.mentors_used||"",
-          podcast_takeaway:data.takeaway||""
-        })
-      });
+      var res=await fetch("/api/diary",{method:"POST",headers:{"Content-Type":"application/json"},body:body});
+      var j=await res.json();
+      console.log("[podcast] 保存响应",JSON.stringify(j));
+      if(j.success){
+        // 更新内存中的 currentDiaryItem，使 hasPodcast 立即可用
+        if(currentDiaryItem&&currentDiaryItem.id===diaryId){
+          currentDiaryItem.podcast_title=data.title||"";
+          currentDiaryItem.podcast_content=data.dialogue||"";
+          currentDiaryItem.podcast_guests=data.mentors_used||"";
+          currentDiaryItem.podcast_takeaway=data.takeaway||"";
+          currentDiaryItem.podcast_created_at=new Date().toISOString();
+        }
+      }
     }catch(e){console.error("[podcast] 保存失败",e);}
   }
 
