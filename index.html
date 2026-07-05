@@ -1004,74 +1004,89 @@ reviewStartBtn.addEventListener("click",startReview);
     return {card_title:title,keywords:keywords,user_quote:userQuote,mentor_quote:mentorQuote};
   }
 
-  function viewFullReview(diaryId){
-    if(!currentDiaryItem||currentDiaryItem.id!==diaryId){
-      loadDiaryEntries();
-      return;
-    }
-    var item=currentDiaryItem;
-    var created=(item.created_at?new Date(item.created_at):new Date());
-    var dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
-    var mentor=item.mentor_name||"关系导师";
-    var letter=item.reflection_letter||"";
-    var card=item.card_copy||"";
-    var hasPodcast=!!(item.podcast_content);
-    var derived=deriveDiaryCardFields(item);
-    var html='<div class="diary-back-row" style="margin-bottom:16px;">'
-      +'<button onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>&nbsp;&nbsp;'
-      +'<button onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>&nbsp;&nbsp;'
-      +'<button onclick="continueWithMentor(\''+mentor+'\',\''+(item.session_id||'')+'\')">返回当前导师继续对话</button>'
-      +'</div>';
 
-    // 历史对话记录
-    html+='<div class="diary-card-label">💬 历史对话记录</div>'
-      +'<div class="diary-detail-letter">'
-      +'<div class="podcast-loading" id="chatHistoryLoading">加载对话记录中…</div>'
+  function renderPodcastSections(podcastContent){
+    // 解析 podcast_content 中的分段标记：【开场】【讨论实录】【收束】
+    if(!podcastContent) return '';
+    var h='<div class="podcast-dialogue">';
+    var sections=podcastContent.split(/【(.+?)】\n?/);
+    var inSection=false;
+    for(var i=0;i<sections.length;i++){
+      var seg=sections[i].trim();
+      if(!seg) continue;
+      if(seg==='开场'||seg==='讨论实录'||seg==='收束'){
+        inSection=true;
+        h+='<div class="podcast-dialogue-label" style="margin-top:12px;">'+seg+'</div>';
+        continue;
+      }
+      if(!inSection) continue;
+      var lines=seg.split("\n");
+      for(var j=0;j<lines.length;j++){
+        var line=lines[j].trim();if(!line)continue;
+        var ci=line.indexOf("：");if(ci===-1)ci=line.indexOf(":");
+        if(ci>-1){
+          h+='<div class="podcast-line"><span class="podcast-speaker">'+line.substring(0,ci).trim()+'：</span>'+line.substring(ci+1).trim()+'</div>';
+        }else{h+='<div class="podcast-line">'+line+'</div>';}
+      }
+    }
+    h+='</div>';return h;
+  }
+
+  function renderDiaryDetail(item){
+    currentDiaryItem=item;
+    const created=(item.created_at?new Date(item.created_at):new Date());
+    const dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
+    const mentor=item.mentor_name||"关系导师";
+    const letter=item.reflection_letter||"";
+    const card=item.card_copy||"";
+    const hasPodcast=!!(item.podcast_content);
+    const derived=deriveDiaryCardFields(item);
+
+    var html='<div class="diary-back-row" style="margin-bottom:16px;"><button onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button></div>';
+
+    // 1. 当时的聊天记录（默认折叠）
+    html+='<div class="diary-card-label">💬 当时的聊天记录</div>'
+      +'<div id="chatHistoryToggle" style="font-size:13px;color:var(--accent);cursor:pointer;margin-bottom:8px;text-decoration:underline;" onclick="toggleChatHistory()">展开当时的对话</div>'
+      +'<div id="chatHistoryFull" style="display:none;">'
+      +'<div class="podcast-loading" id="chatHistoryLoading">加载中…</div>'
       +'<div id="chatHistoryContent" style="display:none;"></div>'
       +'</div>';
 
-    // 导师信
-    if(letter){
-      html+='<div class="diary-card-label" style="margin-top:20px;">📜 '+mentor+'写给你的一封信</div>'
-        +'<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
-    }
-
-    // 关系记忆卡
+    // 2. 关系记忆卡
     if(card){
+      var cardTitle=derived.card_title;
+      var keywords=derived.keywords;
+      var userQuote=derived.user_quote;
+      var mentorQuote=derived.mentor_quote;
       html+='<div class="diary-card-label" style="margin-top:20px;">🃏 关系记忆卡</div>'
         +'<div class="diary-detail-card">'
         +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
         +'<div class="vintage-card">'
         +'<div class="vintage-card-inner">'
         +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 记 忆 卡&nbsp;&nbsp;◆</div>'
-        +'<div style="font-family:\'Noto Serif SC\',serif;font-size:17px;font-weight:700;color:#3a2a20;text-align:center;margin-bottom:14px;">'+derived.card_title+'</div>'
+        +'<div style="font-family:\'Noto Serif SC\',serif;font-size:17px;font-weight:700;color:#3a2a20;text-align:center;margin-bottom:14px;">'+cardTitle+'</div>'
         +'<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;">'+dateStr+'&nbsp;&nbsp;·&nbsp;&nbsp;本章导师：'+mentor+'</div>'
-        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+derived.keywords+'</span></div>'
-        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+derived.user_quote+'”</span></div>'
-        +'<div style="margin-bottom:4px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">导师留下的一句话</span><br><span style="font-size:15px;color:#3a2a20;font-family:\'Noto Serif SC\',serif;line-height:1.9;">'+derived.mentor_quote+'</span></div>'
+        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+keywords+'</span></div>'
+        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+userQuote+'”</span></div>'
+        +'<div style="margin-bottom:4px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">导师留下的一句话</span><br><span style="font-size:15px;color:#3a2a20;font-family:\'Noto Serif SC\',serif;line-height:1.9;">'+mentorQuote+'</span></div>'
         +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
         +'</div></div></div></div>';
     }
 
-    // 观察室
+    // 3. 导师信（完整）
+    if(letter){
+      html+='<div class="diary-card-label" style="margin-top:20px;">📜 '+mentor+'写给你的一封信</div>'
+        +'<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
+    }
+
+    // 4. 观察室文字播客
     if(hasPodcast){
       html+='<div class="diary-card-label" style="margin-top:20px;">🎙 观察室文字播客</div>';
       if(item.podcast_title) html+='<div class="podcast-title">'+item.podcast_title+'</div>';
       if(item.podcast_guests) html+='<div class="podcast-guests">本期嘉宾：'+item.podcast_guests+'</div>';
-      if(item.podcast_content){
-        html+='<div class="podcast-dialogue"><div class="podcast-dialogue-label">讨论实录</div>';
-        var lines=item.podcast_content.split("\n");
-        for(var i=0;i<lines.length;i++){
-          var line=lines[i].trim();if(!line)continue;
-          var ci=line.indexOf("：");if(ci===-1)ci=line.indexOf(":");
-          if(ci>-1){
-            html+='<div class="podcast-line"><span class="podcast-speaker">'+line.substring(0,ci).trim()+'：</span>'+line.substring(ci+1).trim()+'</div>';
-          }else{html+='<div class="podcast-line">'+line+'</div>';}
-        }
-        html+='</div>';
-      }
+      html+=renderPodcastSections(item.podcast_content);
       if(item.podcast_takeaway){
-        html+='<div class="podcast-takeaway" style="margin-bottom:16px;"><div class="podcast-takeaway-label">✦ 本期金句</div>'+item.podcast_takeaway+'</div>';
+        html+='<div class="podcast-takeaway"><div class="podcast-takeaway-label">✦ 本期金句</div>'+item.podcast_takeaway+'</div>';
       }
     }else{
       html+='<div style="text-align:center;margin:20px 0 12px;">'
@@ -1080,29 +1095,36 @@ reviewStartBtn.addEventListener("click",startReview);
         +'<div class="podcast-result" id="podcastResult"></div>';
     }
 
-    // 阶段性定位和诊断
-    var diagnosis=item.podcast_takeaway||derived.mentor_quote||"";
-    if(!diagnosis&&letter){
-      var ls=letter.split(/[。\n]+/);
-      for(var d=0;d<ls.length;d++){var l=ls[d].trim();if(l&&l.length>20&&l.length<120){diagnosis=l;break;}}
-    }
-    html+='<div class="diary-card-label" style="margin-top:20px;">📍 阶段性定位和诊断</div>'
-      +'<div class="podcast-takeaway">'+diagnosis+'</div>';
+    // 5. 阶段观察占位
+    html+='<div class="diary-card-label" style="margin-top:20px;">📍 阶段观察</div>'
+      +'<div style="font-size:14px;color:var(--sub);line-height:1.9;padding:16px 0;">当你的复盘记录累积到 3 次以上，导师会在这里为你梳理关系的阶段性观察</div>';
 
-    html+='<div class="diary-back-row" style="margin-top:20px;">'
-      +'<button onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>&nbsp;&nbsp;'
-      +'<button onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>&nbsp;&nbsp;'
-      +'<button onclick="continueWithMentor(\''+mentor+'\',\''+(item.session_id||'')+'\')">返回当前导师继续对话</button>'
+    // 底部三按钮（竖排）
+    html+='<div style="display:flex;flex-direction:column;gap:10px;margin-top:24px;">'
+      +'<button class="r-btn r-btn-ghost" style="border:1.5px solid var(--line);" onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>'
+      +'<button class="r-btn r-btn-ghost" style="border:1.5px solid var(--line);" onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>'
+      +'<button class="r-btn r-btn-ghost" style="border:1.5px solid var(--line);" onclick="continueWithMentor(\''+mentor+'\',\''+(item.session_id||'')+'\')">返回当前导师继续对话</button>'
       +'</div>';
 
     diarySection.innerHTML=html;
     diarySection.scrollTop=0;
 
-    // 异步加载历史对话
-    loadChatHistoryForReview(item.session_id,item.mentor_name);
+    // 异步预加载聊天记录
+    loadChatHistoryForDetail(item.session_id,item.mentor_name);
   }
 
-  async function loadChatHistoryForReview(sessionId,mentorName){
+  // 折叠/展开聊天记录
+  function toggleChatHistory(){
+    var toggle=document.getElementById("chatHistoryToggle");
+    var full=document.getElementById("chatHistoryFull");
+    if(full.style.display==="none"||!full.style.display){
+      full.style.display="";toggle.textContent="收起对话";
+    }else{
+      full.style.display="none";toggle.textContent="展开当时的对话";
+    }
+  }
+
+  async function loadChatHistoryForDetail(sessionId,mentorName){
     var userId=getOrCreateUserId();
     var loading=document.getElementById("chatHistoryLoading");
     var content=document.getElementById("chatHistoryContent");
@@ -1126,92 +1148,6 @@ reviewStartBtn.addEventListener("click",startReview);
       if(loading)loading.textContent="对话记录加载失败";
       console.error(e);
     }
-  }
-
-  function renderDiaryDetail(item){
-    currentDiaryItem=item;
-    const created=(item.created_at?new Date(item.created_at):new Date());
-    const dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
-    const mentor=item.mentor_name||"关系导师";
-    const letter=item.reflection_letter||"";
-    const card=item.card_copy||"";
-    const hasPodcast=!!(item.podcast_content);
-    const derived=deriveDiaryCardFields(item);
-
-    let html='<div class="diary-back-row" style="margin-bottom:16px;"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>'
-      +'<div class="diary-detail">'
-      +'<div class="diary-detail-header">'
-      +'<h3>'+mentor+'写给你的复盘信</h3>'
-      +'<div class="diary-detail-date">'+dateStr+'</div>'
-      +'</div>';
-
-    // 关系记忆卡 — 结构化
-    if(card){
-      var cardTitle=derived.card_title;
-      var keywords=derived.keywords;
-      var userQuote=derived.user_quote;
-      var mentorQuote=derived.mentor_quote;
-      html+='<div class="diary-card-label">🃏 关系记忆卡</div>'
-        +'<div class="diary-detail-card">'
-        +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
-        +'<div class="vintage-card">'
-        +'<div class="vintage-card-inner">'
-        +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 记 忆 卡&nbsp;&nbsp;◆</div>'
-        +'<div style="font-family:\'Noto Serif SC\',serif;font-size:17px;font-weight:700;color:#3a2a20;text-align:center;margin-bottom:14px;">'+cardTitle+'</div>'
-        +'<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;">'+dateStr+'&nbsp;&nbsp;·&nbsp;&nbsp;本章导师：'+mentor+'</div>'
-        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+keywords+'</span></div>'
-        +'<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+userQuote+'”</span></div>'
-        +'<div style="margin-bottom:4px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">导师留下的一句话</span><br><span style="font-size:15px;color:#3a2a20;font-family:\'Noto Serif SC\',serif;line-height:1.9;">'+mentorQuote+'</span></div>'
-        +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
-        +'</div></div></div></div>';
-    }
-
-    // 导师信
-    if(letter){
-      html+='<div class="diary-card-label" style="margin-top:20px;">📜 '+mentor+'写给你的一封信</div>'
-        +'<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
-    }
-
-    // 观察室
-    if(hasPodcast){
-      html+='<div class="diary-card-label" style="margin-top:20px;">🎙 观察室文字播客</div>';
-      if(item.podcast_title) html+='<div class="podcast-title">'+item.podcast_title+'</div>';
-      if(item.podcast_guests) html+='<div class="podcast-guests">本期嘉宾：'+item.podcast_guests+'</div>';
-      if(item.podcast_content){
-        html+='<div class="podcast-dialogue"><div class="podcast-dialogue-label">讨论实录</div>';
-        const lines=item.podcast_content.split("\n");
-        for(var i=0;i<lines.length;i++){
-          var line=lines[i].trim();if(!line)continue;
-          var ci=line.indexOf("：");if(ci===-1)ci=line.indexOf(":");
-          if(ci>-1){
-            html+='<div class="podcast-line"><span class="podcast-speaker">'+line.substring(0,ci).trim()+'：</span>'+line.substring(ci+1).trim()+'</div>';
-          }else{html+='<div class="podcast-line">'+line+'</div>';}
-        }
-        html+='</div>';
-      }
-      if(item.podcast_takeaway){
-        html+='<div class="podcast-takeaway"><div class="podcast-takeaway-label">✦ 本期金句</div>'+item.podcast_takeaway+'</div>';
-      }
-    }else{
-      html+='<div style="text-align:center;margin:20px 0 12px;">'
-        +'<button class="podcast-gen-btn" id="podcastGenBtn" onclick="generatePodcast({diaryId:\''+item.id+'\'})">🎙 进入观察室，听听他们怎么说</button>'
-        +'</div>'
-        +'<div class="podcast-result" id="podcastResult"></div>';
-    }
-
-    html+='<div class="diary-item-actions" style="margin-top:20px;flex-wrap:wrap;">'
-      +'<button class="diary-btn-sm" onclick="viewFullReview(\''+item.id+'\')">查看完整复盘</button>'
-      +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
-      +'</div>'
-      +'<div class="diary-back-row">'
-      +'<button onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>&nbsp;&nbsp;'
-      +'<button onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>&nbsp;&nbsp;'
-      +'<button onclick="continueWithMentor(\''+mentor+'\',\''+(item.session_id||'')+'\')">返回当前导师继续对话</button>'
-      +'</div>'
-      +'</div>';
-
-    diarySection.innerHTML=html;
-    diarySection.scrollTop=0;
   }
 
   function deleteDiaryEntry(id){
@@ -1242,20 +1178,19 @@ reviewStartBtn.addEventListener("click",startReview);
       id:diaryId,
       user_id:userId,
       podcast_title:data.title||"",
-      podcast_content:data.dialogue||"",
+      podcast_content:(data.opening?"【开场】\n"+data.opening+"\n\n":"")+(data.dialogue?"【讨论实录】\n"+data.dialogue+"\n\n":"")+(data.closing?"【收束】\n"+data.closing:"")||"",
       podcast_guests:data.mentors_used||"",
       podcast_takeaway:data.takeaway||""
     });
-    console.log("[podcast] 保存请求 diaryId="+diaryId+" userId="+userId+" content_len="+(data.dialogue||"").length+" title="+(data.title||""));
+    console.log("[podcast] 保存请求 diaryId="+diaryId+" userId="+userId+" opening_len="+(data.opening||"").length+" dialogue_len="+(data.dialogue||"").length+" closing_len="+(data.closing||"").length+" title="+(data.title||""));
     try{
       var res=await fetch("/api/diary",{method:"POST",headers:{"Content-Type":"application/json"},body:body});
       var j=await res.json();
       console.log("[podcast] 保存响应",JSON.stringify(j));
       if(j.success){
-        // 更新内存中的 currentDiaryItem，使 hasPodcast 立即可用
         if(currentDiaryItem&&currentDiaryItem.id===diaryId){
           currentDiaryItem.podcast_title=data.title||"";
-          currentDiaryItem.podcast_content=data.dialogue||"";
+          currentDiaryItem.podcast_content=(data.opening?"【开场】\n"+data.opening+"\n\n":"")+(data.dialogue?"【讨论实录】\n"+data.dialogue+"\n\n":"")+(data.closing?"【收束】\n"+data.closing:"")||"";
           currentDiaryItem.podcast_guests=data.mentors_used||"";
           currentDiaryItem.podcast_takeaway=data.takeaway||"";
           currentDiaryItem.podcast_created_at=new Date().toISOString();
