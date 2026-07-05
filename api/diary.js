@@ -81,7 +81,7 @@ async function deleteDiary(id, userId, res) {
 // 主入口
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -104,5 +104,45 @@ export default async function handler(req, res) {
     return deleteDiary(id, userId, res);
   }
 
-  return res.status(405).json({ success: false, error: '请使用 GET 或 DELETE' });
+  // POST — 保存观察室播客到 review_results
+  if (req.method === 'POST') {
+    let body;
+    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {
+      return res.status(400).json({ success: false, error: '请求体格式错误' });
+    }
+    const { action, id, user_id: uid, podcast_title, podcast_content, podcast_guests, podcast_takeaway } = body;
+    if (action !== 'save_podcast' || !id || !uid) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    const patchUrl = `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(uid)}`;
+    try {
+      const sr = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          podcast_title: podcast_title || null,
+          podcast_content: podcast_content || null,
+          podcast_guests: podcast_guests || null,
+          podcast_takeaway: podcast_takeaway || null,
+          podcast_created_at: new Date().toISOString(),
+        }),
+      });
+      if (!sr.ok) {
+        console.error('[diary] 播客保存失败', sr.status);
+        return res.status(502).json({ success: false, error: '播客保存失败' });
+      }
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('[diary] 播客保存异常', err);
+      return res.status(502).json({ success: false, error: '播客保存失败' });
+    }
+  }
+
+  return res.status(405).json({ success: false, error: '请使用 GET / DELETE / POST' });
 }

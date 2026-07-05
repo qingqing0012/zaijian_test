@@ -168,6 +168,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 .diary-detail-date{font-size:12px;color:var(--sub);}
 .diary-detail-letter{background:var(--accent-soft);border-radius:14px;padding:24px;font-size:15px;line-height:1.9;color:var(--ink);margin-bottom:16px;}
 .diary-detail-card{margin-bottom:16px;}
+.diary-card-label{font-size:13px;letter-spacing:1.5px;color:var(--accent);margin-bottom:10px;font-weight:600;font-family:'Noto Serif SC',serif;}
 /* —— 观察室文字播客 —— */
 .podcast-gen-btn{background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:20px;font-size:14px;cursor:pointer;font-family:'Noto Sans SC';transition:all .2s;}
 .podcast-gen-btn:hover{opacity:.9;transform:translateY(-1px);}
@@ -862,6 +863,7 @@ reviewStartBtn.addEventListener("click",startReview);
     const mentor=item.mentor_name||"关系导师";
     const letter=item.reflection_letter||"";
     const card=item.card_copy||"";
+    const hasPodcast=!!(item.podcast_content);
 
     let html='<div class="diary-detail">'
       +'<div class="diary-detail-header">'
@@ -869,26 +871,53 @@ reviewStartBtn.addEventListener("click",startReview);
       +'<div class="diary-detail-date">'+dateStr+'</div>'
       +'</div>';
 
-    if(letter){
-      html+='<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
-    }
-
+    // 关系记忆卡
     if(card){
-      html+='<div class="diary-detail-card">'
+      html+='<div class="diary-card-label">🃏 关系记忆卡</div>'
+        +'<div class="diary-detail-card">'
         +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
         +'<div class="vintage-card">'
         +'<div class="vintage-card-inner">'
-        +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 卡 片&nbsp;&nbsp;◆</div>'
-        +'<div class="vintage-card-body">'+card.replace(/\n/g,"<br>")+'</div>'
+        +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 记 忆 卡&nbsp;&nbsp;◆</div>'
+        +'<div class="vintage-card-body" style="font-size:18px;text-align:center;line-height:2.2;">'+card.replace(/\n/g,"<br>")+'</div>'
         +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
         +'</div></div></div></div>';
     }
 
-    html+='<div style="text-align:center;margin:18px 0 12px;">'
-      +'<button class="podcast-gen-btn" id="podcastGenBtn" onclick="generatePodcast()">🎙 生成这次的观察室</button>'
-      +'</div>'
-      +'<div class="podcast-result" id="podcastResult"></div>'
-      +'<div class="diary-item-actions" style="margin-top:16px;">'
+    // 导师信
+    if(letter){
+      html+='<div class="diary-card-label" style="margin-top:20px;">📜 '+mentor+'写给你的一封信</div>'
+        +'<div class="diary-detail-letter">'+letter.replace(/\n/g,"<br>")+'</div>';
+    }
+
+    // 观察室
+    if(hasPodcast){
+      html+='<div class="diary-card-label" style="margin-top:20px;">🎙 观察室文字播客</div>';
+      if(item.podcast_title) html+='<div class="podcast-title">'+item.podcast_title+'</div>';
+      if(item.podcast_guests) html+='<div class="podcast-guests">本期嘉宾：'+item.podcast_guests+'</div>';
+      if(item.podcast_content){
+        html+='<div class="podcast-dialogue"><div class="podcast-dialogue-label">讨论实录</div>';
+        const lines=item.podcast_content.split("\n");
+        for(var i=0;i<lines.length;i++){
+          var line=lines[i].trim();if(!line)continue;
+          var ci=line.indexOf("：");if(ci===-1)ci=line.indexOf(":");
+          if(ci>-1){
+            html+='<div class="podcast-line"><span class="podcast-speaker">'+line.substring(0,ci).trim()+'：</span>'+line.substring(ci+1).trim()+'</div>';
+          }else{html+='<div class="podcast-line">'+line+'</div>';}
+        }
+        html+='</div>';
+      }
+      if(item.podcast_takeaway){
+        html+='<div class="podcast-takeaway"><div class="podcast-takeaway-label">✦ 本期金句</div>'+item.podcast_takeaway+'</div>';
+      }
+    }else{
+      html+='<div style="text-align:center;margin:20px 0 12px;">'
+        +'<button class="podcast-gen-btn" id="podcastGenBtn" onclick="generatePodcast({diaryId:\''+item.id+'\'})">🎙 进入观察室，听听他们怎么说</button>'
+        +'</div>'
+        +'<div class="podcast-result" id="podcastResult"></div>';
+    }
+
+    html+='<div class="diary-item-actions" style="margin-top:20px;">'
       +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
       +'</div>'
       +'<div class="diary-back-row"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>'
@@ -918,6 +947,26 @@ reviewStartBtn.addEventListener("click",startReview);
       });
   }
 
+  // 保存播客到恋爱日记
+  async function savePodcastToDiary(diaryId,data){
+    var userId=getOrCreateUserId();
+    try{
+      await fetch("/api/diary",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          action:"save_podcast",
+          id:diaryId,
+          user_id:userId,
+          podcast_title:data.title||"",
+          podcast_content:data.dialogue||"",
+          podcast_guests:data.mentors_used||"",
+          podcast_takeaway:data.takeaway||""
+        })
+      });
+    }catch(e){console.error("[podcast] 保存失败",e);}
+  }
+
   // ===== 观察室文字播客 =====
   function generatePodcastFromReview(){
     if(!currentReviewData||!currentReviewData.session_id){
@@ -934,7 +983,7 @@ reviewStartBtn.addEventListener("click",startReview);
   }
 
   async function generatePodcast(data){
-    let sid,refLetter,cardCopy,btnId,resultId;
+    let sid,refLetter,cardCopy,btnId,resultId,diaryId;
 
     if(data){
       sid=data.session_id;
@@ -942,6 +991,7 @@ reviewStartBtn.addEventListener("click",startReview);
       cardCopy=data.card_copy||"";
       btnId=data.btnId||"podcastGenBtn";
       resultId=data.resultId||"podcastResult";
+      diaryId=data.diaryId||null;
     }else{
       const item=currentDiaryItem;
       if(!item||!item.session_id){
@@ -953,6 +1003,7 @@ reviewStartBtn.addEventListener("click",startReview);
       cardCopy=item.card_copy||"";
       btnId="podcastGenBtn";
       resultId="podcastResult";
+      diaryId=item.id||null;
     }
 
     const btn=document.getElementById(btnId);
@@ -981,7 +1032,7 @@ reviewStartBtn.addEventListener("click",startReview);
         return;
       }
 
-      pollPodcast(startData.execute_id,btn,result);
+      pollPodcast(startData.execute_id,btn,result,diaryId);
     }catch(err){
       if(result)result.innerHTML='<div class="podcast-loading" style="color:#c97a7a;">网络错误，请稍后重试</div>';
       if(btn){btn.disabled=false;btn.textContent="🎙 生成这次的观察室";}
@@ -989,7 +1040,7 @@ reviewStartBtn.addEventListener("click",startReview);
     }
   }
 
-  function pollPodcast(executeId,btn,result){
+  function pollPodcast(executeId,btn,result,diaryId){
     let attempts=0;
     const maxAttempts=45;
 
@@ -1002,6 +1053,8 @@ reviewStartBtn.addEventListener("click",startReview);
             clearInterval(podcastPollTimer);
             podcastPollTimer=null;
             renderPodcastResult(data,result);
+            // 有 diaryId 时自动保存播客
+            if(diaryId){savePodcastToDiary(diaryId,data);}
             if(btn){btn.style.display="none";}
             return;
           }
