@@ -468,20 +468,25 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
     currentMentor=mentorName;
     chatMentorName.textContent=mentorName+"导师";
     chatMentorSub.textContent=mentors[mentorName]?mentors[mentorName].subtitle:"";
-    // 隐藏所有非聊天卡片
+    // 隐藏所有非聊天卡片（复盘页、恋爱日记、首页、测试页）
     homeCard.classList.add("hidden");
     quizCard.classList.add("hidden");
     resultCard.classList.add("hidden");
     diaryCard.classList.add("hidden");
+    // 新建会话（不恢复旧对话）
+    currentConversationId=null;
+    currentSessionId=crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+    // 保存新 session 到 localStorage
+    var sm=getSessMap();sm[mentorName]=currentSessionId;setSessMap(sm);
+    // 清空消息缓存
+    var mc=getMsgCache();mc[mentorName]=[];setMsgCache(mc);
     // 显示聊天
     chatCard.classList.remove("hidden");
     renderMentorBar();
-    loadMentorState(mentorName);
-    renderCachedMessages(mentorName);
+    chatMsgs.innerHTML='<div class="chat-empty">这里是一个安全的空间<br>你想和我聊什么？</div>';
     chatInput.value="";
     chatSendBtn.disabled=false;
     chatInput.focus();
-    syncChatHistory(mentorName);
     window.scrollTo(0,0);
   }
 
