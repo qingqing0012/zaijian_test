@@ -153,6 +153,8 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
 .diary-item-date{font-size:12px;color:var(--sub);margin-bottom:4px;letter-spacing:0.5px;}
 .diary-item-mentor{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:6px;font-family:'Noto Serif SC',serif;}
 .diary-item-summary{font-size:13.5px;color:var(--ink);line-height:1.75;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.diary-item-keywords{font-size:11px;color:var(--accent);letter-spacing:0.5px;margin-bottom:6px;}
+.diary-item-anchor{font-size:14.5px;color:var(--ink);line-height:1.7;font-family:'Noto Serif SC',serif;margin-bottom:10px;}
 .diary-item-actions{display:flex;gap:10px;}
 .diary-btn-sm{background:none;border:1px solid var(--line);padding:6px 14px;border-radius:12px;font-size:12.5px;cursor:pointer;font-family:'Noto Sans SC';color:var(--sub);transition:all .15s;}
 .diary-btn-sm:hover{border-color:var(--accent);color:var(--accent);}
@@ -841,21 +843,52 @@ reviewStartBtn.addEventListener("click",startReview);
       +'<div class="diary-back-row"><button onclick="closeDiary()">← 返回首页</button></div>';
   }
 
+  function extractTimelineKeywords(item){
+    var text=(item.reflection_letter||"")+" "+(item.card_copy||"")+" "+(item.user_quote||"")+" "+(item.card_title||"");
+    var kw=["纪念日","生日","小题大做","重要节点","被看见","在意","沟通","合作","边界","分手","复合","习惯","投入","委屈","失望","否定","情绪回应"];
+    var found=[];
+    for(var i=0;i<kw.length;i++){
+      if(text.indexOf(kw[i])>-1) found.push(kw[i]);
+      if(found.length>=5) break;
+    }
+    return found.length>0?found.join(" / "):"关系复盘";
+  }
+
+  function extractLoveAnchor(item){
+    if(item.love_anchor) return item.love_anchor;
+    if(item.card_title) return item.card_title;
+    if(item.user_quote) return item.user_quote;
+    var letter=item.reflection_letter||"";
+    var card=item.card_copy||"";
+    // 找最抓眼球的一句：含"我"且含关系关键词
+    var sents=(letter+"。"+card).split(/[。！？\n]+/);
+    for(var i=0;i<sents.length;i++){
+      var s=sents[i].trim();
+      if(s.indexOf("我")>-1&&(s.indexOf("纪念日")>-1||s.indexOf("生日")>-1||s.indexOf("分手")>-1||s.indexOf("吵架")>-1||s.indexOf("习惯")>-1||s.indexOf("在意")>-1||s.indexOf("委屈")>-1)){
+        if(s.length<60) return s;
+      }
+    }
+    // 兜底：取第一句带"我"的短句
+    for(var j=0;j<sents.length;j++){
+      var t=sents[j].trim();
+      if(t.indexOf("我")>-1&&t.length<50) return t;
+    }
+    return "这一次，我看见了自己的在意";
+  }
+
   function renderDiaryList(items){
-    let html='<h2>恋爱日记</h2><p class="diary-subtitle">每一次复盘，都会在这里留下你关系里的一个节点。</p><div class="diary-list">';
+    var html='<h2>恋爱日记</h2><p class="diary-subtitle">每一次复盘，都会在这里留下你关系里的一个节点。</p><div class="diary-list">';
 
     items.forEach(function(item,i){
-      const created=(item.created_at?new Date(item.created_at):new Date());
-      const dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日 "+String(created.getHours()).padStart(2,"0")+":"+String(created.getMinutes()).padStart(2,"0");
-      const mentor=item.mentor_name||"关系导师";
-      const letter=item.reflection_letter||"";
-      const card=item.card_copy||"";
-      const summary=letter.substring(0,80)+(letter.length>80?"…":"");
+      var created=(item.created_at?new Date(item.created_at):new Date());
+      var dateStr=created.getFullYear()+"年"+(created.getMonth()+1)+"月"+created.getDate()+"日";
+      var keywords=extractTimelineKeywords(item);
+      var anchor=extractLoveAnchor(item);
 
       html+='<div class="diary-item" style="animation-delay:'+(i*0.06)+'s">'
         +'<div class="diary-item-date">'+dateStr+'</div>'
-        +'<div class="diary-item-mentor">'+mentor+'</div>'
-        +'<div class="diary-item-summary">'+(summary||card||"这是一条关系复盘记录。")+'</div>'
+        +'<div class="diary-item-keywords">'+keywords+'</div>'
+        +'<div class="diary-item-anchor">“'+anchor+'”</div>'
         +'<div class="diary-item-actions">'
         +'<button class="diary-btn-sm" onclick="renderDiaryDetail('+JSON.stringify(item).replace(/"/g,"&quot;")+')">查看这次复盘</button>'
         +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除</button>'
@@ -1006,7 +1039,10 @@ reviewStartBtn.addEventListener("click",startReview);
     html+='<div class="diary-item-actions" style="margin-top:20px;">'
       +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
       +'</div>'
-      +'<div class="diary-back-row"><button onclick="loadDiaryEntries()">← 返回恋爱日记</button></div>';
+      +'<div class="diary-back-row">'
+      +'<button onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>&nbsp;&nbsp;'
+      +'<button onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>'
+      +'</div>';
 
     diarySection.innerHTML=html;
     diarySection.scrollTop=0;
@@ -1112,11 +1148,18 @@ reviewStartBtn.addEventListener("click",startReview);
         +'<div class="podcast-result" id="podcastResult"></div>';
     }
 
+    // 简要复盘
+    html+='<div class="diary-card-label" style="margin-top:20px;">📝 简要复盘</div>'
+      +'<div class="diary-detail-letter" style="font-size:14px;line-height:1.85;padding:16px 20px;">'+(letter?letter.substring(0,200)+(letter.length>200?"…":""):"暂无复盘内容。")+'</div>';
+
     html+='<div class="diary-item-actions" style="margin-top:20px;flex-wrap:wrap;">'
       +'<button class="diary-btn-sm" onclick="viewFullReview(\''+item.id+'\')">查看完整复盘</button>'
       +'<button class="diary-btn-sm diary-btn-danger" onclick="deleteDiaryEntry(\''+item.id+'\')">删除这条记录</button>'
       +'</div>'
-      +'<div class="diary-back-row"><button onclick="resetToChatView(\''+mentor+'\')">返回导师聊天</button></div>'
+      +'<div class="diary-back-row">'
+      +'<button onclick="loadDiaryEntries()">← 返回恋爱日记时间轴</button>&nbsp;&nbsp;'
+      +'<button onclick="resetToChatView(\''+mentor+'\')">开启新的对话</button>'
+      +'</div>'
       +'</div>';
 
     diarySection.innerHTML=html;
