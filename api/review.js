@@ -8,6 +8,8 @@
 
 const COZE_API_BASE = 'https://api.coze.cn';
 const WORKFLOW_ID = '7657016359910359074';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY;
 
 // ---- Supabase 写入 ----
 async function supabaseInsertReview(row) {
@@ -207,17 +209,32 @@ export default async function handler(req, res) {
       if (status === 'Success') {
         const { fupan, kapian } = parseWorkflowOutput(record.output);
 
-        // 存 Supabase（不阻塞复盘展示）
-        if (sessionId) {
+        // 存 Supabase（不阻塞复盘展示），并回读 review_id
+        let reviewId = null;
+        if (sessionId && SUPABASE_URL && SUPABASE_KEY) {
           try {
-            await supabaseInsertReview({
-              session_id: sessionId,
-              execute_id: executeId,
-              mentor_name: mentorName || null,
-              reflection_letter: fupan,
-              card_copy: kapian,
-              user_id: userId,
+            const ir = await fetch(`${SUPABASE_URL}/rest/v1/review_results`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation',
+              },
+              body: JSON.stringify({
+                session_id: sessionId,
+                execute_id: executeId,
+                mentor_name: mentorName || null,
+                reflection_letter: fupan,
+                card_copy: kapian,
+                user_id: userId,
+              }),
             });
+            if (ir.ok) {
+              const inserted = await ir.json();
+              const row = Array.isArray(inserted) ? inserted[0] : inserted;
+              reviewId = row ? row.id : null;
+            }
           } catch (insertErr) {
             console.error('[review] Supabase 入库失败（复盘已生成）', insertErr);
           }
@@ -227,6 +244,7 @@ export default async function handler(req, res) {
           status: 'success',
           letter: fupan,
           card: kapian,
+          review_id: reviewId,
         });
       }
 

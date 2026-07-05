@@ -635,7 +635,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
   }
 
   // 显示复盘结果（先信后卡）
-  function showReviewResult(letter,card){
+  function showReviewResult(letter,card,reviewId){
     reviewContent.innerHTML='<div class="review-letter"><div class="review-label">📜 复盘信</div><div class="review-letter-box"><div class="review-letter-paper"><div class="review-letter-content">'+letter.replace(/\n/g,'<br>')+'</div></div></div></div>';
     reviewPanel.scrollTop=0;
 
@@ -655,7 +655,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
           +'<div class="vintage-card-download"><button class="vintage-card-download-btn" onclick="downloadVintageCard()">↓ 保存卡片</button></div>'
           +'</div>';
         // 存复盘数据供观察室使用
-        currentReviewData={session_id:currentSessionId,reflection_letter:letter,card_copy:card};
+        currentReviewData={session_id:currentSessionId,reflection_letter:letter,card_copy:card,review_id:reviewId||null};
 
         // 观察室播客入口
         const podcastRow=document.createElement("div");
@@ -737,7 +737,7 @@ body{ font-family:'Noto Sans SC',sans-serif; background:radial-gradient(circle a
           if(data.status==="success"){
             clearInterval(reviewPollTimer);
             reviewPollTimer=null;
-            showReviewResult(data.letter,data.card);
+            showReviewResult(data.letter,data.card,data.review_id);
             reviewStartBtn.disabled=false;
             return;
           }
@@ -1174,12 +1174,12 @@ reviewStartBtn.addEventListener("click",startReview);
       podcast_guests:data.mentors_used||"",
       podcast_takeaway:data.takeaway||""
     });
-    console.log("[podcast] 保存请求 diaryId="+diaryId+" userId="+userId+" opening_len="+(data.opening||"").length+" dialogue_len="+(data.dialogue||"").length+" closing_len="+(data.closing||"").length+" title="+(data.title||""));
+    console.log("[podcast:save:start]",{reviewId:diaryId,user_id:userId,podcast_content_length:(data.opening||"").length+(data.dialogue||"").length+(data.closing||"").length});
     try{
       var res=await fetch("/api/diary",{method:"POST",headers:{"Content-Type":"application/json"},body:body});
       var j=await res.json();
-      console.log("[podcast] 保存响应",JSON.stringify(j));
       if(j.success){
+        console.log("[podcast:save:success]",{reviewId:diaryId,podcast_content_length:j.podcast_content_length});
         if(currentDiaryItem&&currentDiaryItem.id===diaryId){
           currentDiaryItem.podcast_title=data.title||"";
           currentDiaryItem.podcast_content=(data.opening?"【开场】\n"+data.opening+"\n\n":"")+(data.dialogue?"【讨论实录】\n"+data.dialogue+"\n\n":"")+(data.closing?"【收束】\n"+data.closing:"")||"";
@@ -1188,7 +1188,7 @@ reviewStartBtn.addEventListener("click",startReview);
           currentDiaryItem.podcast_created_at=new Date().toISOString();
         }
       }
-    }catch(e){console.error("[podcast] 保存失败",e);}
+    }catch(e){console.error("[podcast:save:failed]",e);}
   }
 
   // ===== 观察室文字播客 =====
@@ -1197,10 +1197,12 @@ reviewStartBtn.addEventListener("click",startReview);
       alert("缺少对话记录，无法生成观察室");
       return;
     }
+    console.log("[podcast:start]",{reviewId:currentReviewData.review_id,session_id:currentReviewData.session_id,user_id:getOrCreateUserId(),mentor_name:currentMentor});
     generatePodcast({
       session_id:currentReviewData.session_id,
       reflection_letter:currentReviewData.reflection_letter||"",
       card_copy:currentReviewData.card_copy||"",
+      diaryId:currentReviewData.review_id||null,
       btnId:"podcastReviewBtn",
       resultId:"podcastReviewResult"
     });
@@ -1363,6 +1365,7 @@ reviewStartBtn.addEventListener("click",startReview);
     }
 
     html+='</div>';
+    html+='<div style="text-align:center;font-size:12px;color:var(--sub);margin-top:12px;">观察室已保存到恋爱日记</div>';
     result.innerHTML=html;
   }
 </script>
