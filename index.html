@@ -871,15 +871,25 @@ reviewStartBtn.addEventListener("click",startReview);
       +'<div class="diary-detail-date">'+dateStr+'</div>'
       +'</div>';
 
-    // 关系记忆卡
+    // 关系记忆卡 — 结构化
     if(card){
+      var cardTitle=item.card_title||"这一次，我看见了自己的在意";
+      var keywords=item.keywords||"";
+      var userQuote=item.user_quote||"本次复盘暂未提取到原话";
+      var mentorQuote=card;
       html+='<div class="diary-card-label">🃏 关系记忆卡</div>'
         +'<div class="diary-detail-card">'
         +'<div class="vintage-card-wrapper" style="margin:0 auto;">'
         +'<div class="vintage-card">'
         +'<div class="vintage-card-inner">'
         +'<div class="vintage-card-ornament">◆&nbsp;&nbsp;关 系 记 忆 卡&nbsp;&nbsp;◆</div>'
-        +'<div class="vintage-card-body" style="font-size:18px;text-align:center;line-height:2.2;">'+card.replace(/\n/g,"<br>")+'</div>'
+        +'<div style="font-family:\'Noto Serif SC\',serif;font-size:17px;font-weight:700;color:#3a2a20;text-align:center;margin-bottom:14px;">'+cardTitle+'</div>'
+        +'<div style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:18px;">'+dateStr+'&nbsp;&nbsp;·&nbsp;&nbsp;本章导师：'+mentor+'</div>';
+      if(keywords){
+        html+='<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">关键词</span><br><span style="font-size:13px;color:#7A5D50;">'+keywords+'</span></div>';
+      }
+      html+='<div style="margin-bottom:12px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">我说出口的一句话</span><br><span style="font-size:14px;color:#5A3D30;font-family:\'Noto Serif SC\',serif;line-height:1.8;">“'+userQuote+'”</span></div>'
+        +'<div style="margin-bottom:4px;"><span style="font-size:11px;color:var(--sub);letter-spacing:1px;">导师留下的一句话</span><br><span style="font-size:15px;color:#3a2a20;font-family:\'Noto Serif SC\',serif;line-height:1.9;">'+mentorQuote+'</span></div>'
         +'<div class="vintage-card-footer">—— '+mentor+' · 再见爱人</div>'
         +'</div></div></div></div>';
     }
@@ -984,14 +994,15 @@ reviewStartBtn.addEventListener("click",startReview);
 
   async function generatePodcast(data){
     let sid,refLetter,cardCopy,btnId,resultId,diaryId;
+    const fallbackItem=currentDiaryItem;
 
     if(data){
-      sid=data.session_id;
-      refLetter=data.reflection_letter||"";
-      cardCopy=data.card_copy||"";
+      sid=data.session_id||(fallbackItem?fallbackItem.session_id:null);
+      refLetter=data.reflection_letter||(fallbackItem?fallbackItem.reflection_letter:"");
+      cardCopy=data.card_copy||(fallbackItem?fallbackItem.card_copy:"");
       btnId=data.btnId||"podcastGenBtn";
       resultId=data.resultId||"podcastResult";
-      diaryId=data.diaryId||null;
+      diaryId=data.diaryId||(fallbackItem?fallbackItem.id:null);
     }else{
       const item=currentDiaryItem;
       if(!item||!item.session_id){
